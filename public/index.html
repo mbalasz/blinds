@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Blinds</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+  </head>
+  <body>
+    <div class="range-slider center-screen">
+      <input
+        id="blinds-slider"
+        class="input-range"
+        orient="vertical"
+        type="range"
+        step="1"
+        value="5"
+        min="0"
+        max="100"
+      />
+      <span class="range-value"></span>
+    </div>
+  </body>
+</html>

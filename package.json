@@ -1,0 +1,24 @@
+{
+    "name": "blinds",
+    "version": "1.0.0",
+    "description": "",
+    "main": "server.js",
+    "scripts": {
+        "sass:compile": "node-sass --include-path sass public/style.scss public/style.css"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/mbalasz/blinds.git"
+    },
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/mbalasz/blinds/issues"
+    },
+    "homepage": "https://github.com/mbalasz/blinds#readme",
+    "dependencies": {
+        "express": "^4.17.1",
+        "onoff": "^6.0.3",
+        "socket.io": "^4.3.1"
+    }
+}
