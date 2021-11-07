@@ -49,7 +49,7 @@ $(document).ready(function (e) {
         changeBackground(this.value, this.max);
     });
     range.on("mouseup", function () {
-        // socket.emit("slider-changed", this.value);
+        socket.emit("slider-changed", this.value);
     });
 
     up.attr("disabled", true);
@@ -59,5 +59,14 @@ $(document).ready(function (e) {
         range.attr("value", value);
         changeBackground(range.attr("value"), range.attr("max"));
     });
-    socket.on("set-controls-enabled", (enabled) => {});
+    socket.on("set-arrows-enabled", (enabled) => {
+        up.attr("disabled", !enabled);
+        down.attr("disabled", !enabled);
+    });
+    socket.on("set-stop-enabled", (enabled) => {
+        stop.attr("disabled", !enabled);
+    });
+    socket.on("show-progress", (showProgress) => {
+        console.log("show progress " + showProgress);
+    });
 });

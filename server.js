@@ -10,7 +10,8 @@ const blindsPositionFilePath = "blinds.txt";
 
 const DOWN = "down";
 const UP = "up";
-const STEP_WAIT_TIME = 15;
+// const STEP_WAIT_TIME = 15;
+const STEP_WAIT_TIME = 1;
 const DEFAULT_SPEED = 1;
 const MAX_STEPS = 16500;
 
@@ -20,6 +21,7 @@ let pullPin;
 let enablePin;
 let currentBlindsPosition = readBlindsPosition() || 0;
 let interrupted = false;
+let blindsObservers = [];
 
 app.use(express.static("public"));
 app.get("/", (req, res) => {
@@ -57,6 +59,22 @@ io.on("connection", (socket) => {
         }
     });
 
+    const setArrowsEnabled = (blindsInMotion) =>
+        socket.emit("set-arrows-enabled", !blindsInMotion);
+    const setStopEnabled = (blindsInMotion) =>
+        socket.emit("set-stop-enabled", blindsInMotion);
+    const showProgress = (blindsInMotion) =>
+        socket.emit("show-progress", blindsInMotion);
+    const observers = [setArrowsEnabled, setStopEnabled, showProgress];
+    blindsObservers.push(...observers);
+    blindsObservers.forEach((observer) => observer(blindsInMotion));
+
+    socket.on("disconnect", () => {
+        blindsObservers = blindsObservers.filter(
+            (item) => !observers.includes(item)
+        );
+    });
+
     socket.emit("current-pos", (currentBlindsPosition / MAX_STEPS) * 100);
 });
 
@@ -90,6 +108,11 @@ function setupBlinds() {
     }
 }
 
+function setBlindsInMotion(inMotion) {
+    blindsInMotion = inMotion;
+    blindsObservers.forEach((observer) => observer(inMotion));
+}
+
 async function moveBlinds(dir, steps, speed) {
     if (blindsInMotion) {
         return;
@@ -101,7 +124,7 @@ async function moveBlinds(dir, steps, speed) {
     // setMotorEnabled(true);
 
     // dirPin.writeSync(dir == DOWN ? Gpio.HIGH : Gpio.LOW);
-    blindsInMotion = true;
+    setBlindsInMotion(true);
     let counter = 0;
     while (true) {
         // pullPin.writeSync(Gpio.HIGH);
@@ -120,7 +143,7 @@ async function moveBlinds(dir, steps, speed) {
         currentBlindsPosition += dir == DOWN ? -1 : 1;
     }
     storeBlindsPosition(currentBlindsPosition.toString());
-    blindsInMotion = false;
+    setBlindsInMotion(false);
     interrupted = false;
     // setMotorEnabled(false);
 }
