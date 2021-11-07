@@ -40,16 +40,24 @@ let socket = io();
 
 $(document).ready(function (e) {
     var range = $(".input-range"),
-        value = $(".range-value");
+        value = $(".range-value"),
+        up = $("#up"),
+        down = $("#down"),
+        stop = $("#stop");
+
+    range.on("input", function () {
+        changeBackground(this.value, this.max);
+    });
+    range.on("mouseup", function () {
+        // socket.emit("slider-changed", this.value);
+    });
+
+    up.attr("disabled", true);
+    stop.attr("disabled", true);
 
     socket.on("current-pos", (value) => {
         range.attr("value", value);
         changeBackground(range.attr("value"), range.attr("max"));
     });
-    range.on("input", function () {
-        changeBackground(this.value, this.max);
-    });
-    range.on("mouseup", function () {
-        socket.emit("slider-changed", this.value);
-    });
+    socket.on("set-controls-enabled", (enabled) => {});
 });

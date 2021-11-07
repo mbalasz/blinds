@@ -19,7 +19,6 @@ let dirPin;
 let pullPin;
 let enablePin;
 let currentBlindsPosition = readBlindsPosition() || 0;
-console.log("curr " + currentBlindsPosition);
 let interrupted = false;
 
 app.use(express.static("public"));
@@ -52,8 +51,10 @@ io.on("connection", (socket) => {
         storeBlindsPosition(0);
     });
 
-    socket.on("interrupt", () => {
-        interrupted = true;
+    socket.on("stop blinds", () => {
+        if (blindsInMotion) {
+            interrupted = true;
+        }
     });
 
     socket.emit("current-pos", (currentBlindsPosition / MAX_STEPS) * 100);
@@ -113,7 +114,6 @@ async function moveBlinds(dir, steps, speed) {
             if (interrupted) {
                 console.log(`interrupted: ${interrupted}`);
             }
-            interrupted = false;
             break;
         }
         counter++;
@@ -121,6 +121,7 @@ async function moveBlinds(dir, steps, speed) {
     }
     storeBlindsPosition(currentBlindsPosition.toString());
     blindsInMotion = false;
+    interrupted = false;
     // setMotorEnabled(false);
 }
 

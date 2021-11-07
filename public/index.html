@@ -9,17 +9,27 @@
   </head>
   <body>
     <div class="range-slider center-screen">
-      <input
-        id="blinds-slider"
-        class="input-range"
-        orient="vertical"
-        type="range"
-        step="1"
-        value="5"
-        min="0"
-        max="100"
-      />
-      <span class="range-value"></span>
+      <div class="wrapper">
+        <input
+          id="blinds-slider"
+          class="input-range one"
+          orient="vertical"
+          type="range"
+          step="1"
+          value="5"
+          min="0"
+          max="100"
+        />
+        <button class="button two-row-one large-font" id="up" role="button">
+          <b>&#8593;</b>
+        </button>
+        <button class="button two-row-two large-font" id="stop" role="button">
+          <b>&#x274F;</b>
+        </button>
+        <button class="button two-row-three large-font" id="down" role="button">
+          <b>&#8595;</b>
+        </button>
+      </div>
     </div>
   </body>
 </html>
