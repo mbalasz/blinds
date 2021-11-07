@@ -21,7 +21,8 @@ let pullPin;
 let enablePin;
 let currentBlindsPosition = readBlindsPosition() || 0;
 let interrupted = false;
-let blindsObservers = [];
+let blindsStatusObservers = [];
+let blindsPositionObservers = [];
 
 app.use(express.static("public"));
 app.get("/", (req, res) => {
@@ -49,7 +50,7 @@ io.on("connection", (socket) => {
     });
 
     socket.on("reset-blinds", () => {
-        currentBlindsPosition = 0;
+        setCurrentBlindsPosition(0);
         storeBlindsPosition(0);
     });
 
@@ -59,23 +60,42 @@ io.on("connection", (socket) => {
         }
     });
 
+    console.log("Connected");
+
     const setArrowsEnabled = (blindsInMotion) =>
         socket.emit("set-arrows-enabled", !blindsInMotion);
     const setStopEnabled = (blindsInMotion) =>
         socket.emit("set-stop-enabled", blindsInMotion);
-    const showProgress = (blindsInMotion) =>
-        socket.emit("show-progress", blindsInMotion);
-    const observers = [setArrowsEnabled, setStopEnabled, showProgress];
-    blindsObservers.push(...observers);
-    blindsObservers.forEach((observer) => observer(blindsInMotion));
+    const setSliderEnabled = (blindsInMotion) =>
+        socket.emit("set-slider-enabled", !blindsInMotion);
+    const statusObservers = [
+        setArrowsEnabled,
+        setStopEnabled,
+        setSliderEnabled,
+    ];
+    blindsStatusObservers.push(...statusObservers);
+    blindsStatusObservers.forEach((observer) => observer(blindsInMotion));
+
+    const updateBlindsPosition = (blindsPosition) =>
+        socket.emit("blinds-position", blindsPosition);
+    blindsPositionObservers.push(updateBlindsPosition);
 
     socket.on("disconnect", () => {
-        blindsObservers = blindsObservers.filter(
-            (item) => !observers.includes(item)
+        console.log("Disconnecting: blinds observers before: ");
+        blindsStatusObservers.forEach((item) => console.log(item));
+        blindsPositionObservers.forEach((item) => console.log(item));
+        blindsStatusObservers = blindsStatusObservers.filter(
+            (item) => !statusObservers.includes(item)
         );
+        blindsPositionObservers = blindsPositionObservers.filter(
+            (item) => ![updateBlindsPosition].includes(item)
+        );
+        console.log("blinds observers after: ");
+        blindsStatusObservers.forEach((item) => console.log(item));
+        blindsPositionObservers.forEach((item) => console.log(item));
     });
 
-    socket.emit("current-pos", (currentBlindsPosition / MAX_STEPS) * 100);
+    socket.emit("start-pos", (currentBlindsPosition / MAX_STEPS) * 100);
 });
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -110,7 +130,14 @@ function setupBlinds() {
 
 function setBlindsInMotion(inMotion) {
     blindsInMotion = inMotion;
-    blindsObservers.forEach((observer) => observer(inMotion));
+    blindsStatusObservers.forEach((observer) => observer(inMotion));
+}
+
+function setBlindsPosition(position) {
+    currentBlindsPosition = position;
+    blindsPositionObservers.forEach((observer) =>
+        observer((position / MAX_STEPS) * 100)
+    );
 }
 
 async function moveBlinds(dir, steps, speed) {
@@ -140,7 +167,7 @@ async function moveBlinds(dir, steps, speed) {
             break;
         }
         counter++;
-        currentBlindsPosition += dir == DOWN ? -1 : 1;
+        setBlindsPosition(currentBlindsPosition + (dir == DOWN ? -1 : 1));
     }
     storeBlindsPosition(currentBlindsPosition.toString());
     setBlindsInMotion(false);

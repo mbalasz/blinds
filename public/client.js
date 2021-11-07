@@ -41,9 +41,22 @@ let socket = io();
 $(document).ready(function (e) {
     var range = $(".input-range"),
         value = $(".range-value"),
+        currentProgress = $(".progress-bar"),
+        progressContainer = $(".progress-container"),
         up = $("#up"),
         down = $("#down"),
         stop = $("#stop");
+    const maxProgressValue = progressContainer.height();
+
+    function setProgress(percentage, animate) {
+        currentProgress.animate(
+            {
+                height: (percentage / 100) * maxProgressValue,
+            },
+            animate,
+            function () {}
+        );
+    }
 
     range.on("input", function () {
         changeBackground(this.value, this.max);
@@ -55,8 +68,9 @@ $(document).ready(function (e) {
     up.attr("disabled", true);
     stop.attr("disabled", true);
 
-    socket.on("current-pos", (value) => {
+    socket.on("start-pos", (value) => {
         range.attr("value", value);
+        setProgress(value, 300);
         changeBackground(range.attr("value"), range.attr("max"));
     });
     socket.on("set-arrows-enabled", (enabled) => {
@@ -66,7 +80,11 @@ $(document).ready(function (e) {
     socket.on("set-stop-enabled", (enabled) => {
         stop.attr("disabled", !enabled);
     });
-    socket.on("show-progress", (showProgress) => {
-        console.log("show progress " + showProgress);
+    socket.on("set-slider-enabled", (enabled) => {
+        range.attr("disabled", !enabled);
+    });
+    socket.on("blinds-position", (position) => {
+        // console.log(position);
+        setProgress(position, 0);
     });
 });
