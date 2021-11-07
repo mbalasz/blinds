@@ -10,6 +10,8 @@ const blindsPositionFilePath = "blinds.txt";
 
 const DOWN = "down";
 const UP = "up";
+const DEFAULT_STEPS_UP = 50;
+const DEFAULT_STEPS_DOWN = 50;
 // const STEP_WAIT_TIME = 15;
 const STEP_WAIT_TIME = 1;
 const DEFAULT_SPEED = 1;
@@ -54,10 +56,16 @@ io.on("connection", (socket) => {
         storeBlindsPosition(0);
     });
 
-    socket.on("stop blinds", () => {
-        if (blindsInMotion) {
-            interrupted = true;
-        }
+    socket.on("stop-blinds", () => {
+        setBlindsInMotion(false);
+    });
+
+    socket.on("move-up", () => {
+        moveBlinds(UP, DEFAULT_STEPS_UP, DEFAULT_SPEED);
+    });
+
+    socket.on("move-down", () => {
+        moveBlinds(DOWN, DEFAULT_STEPS_DOWN, DEFAULT_SPEED);
     });
 
     console.log("Connected");
@@ -129,11 +137,15 @@ function setupBlinds() {
 }
 
 function setBlindsInMotion(inMotion) {
+    if (blindsInMotion && !inMotion) {
+        interrupted = true;
+    }
     blindsInMotion = inMotion;
     blindsStatusObservers.forEach((observer) => observer(inMotion));
 }
 
 function setBlindsPosition(position) {
+    console.log("current blinds pos " + position);
     currentBlindsPosition = position;
     blindsPositionObservers.forEach((observer) =>
         observer((position / MAX_STEPS) * 100)

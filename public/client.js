@@ -58,6 +58,17 @@ $(document).ready(function (e) {
         );
     }
 
+    stop.click(() => {
+        socket.emit("stop-blinds");
+    });
+
+    up.click(() => {
+        socket.emit("move-up");
+    });
+    down.click(() => {
+        socket.emit("move-down");
+    });
+
     range.on("input", function () {
         changeBackground(this.value, this.max);
     });
