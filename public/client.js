@@ -44,15 +44,17 @@ $(document).ready(function (e) {
         progressContainer = $(".progress-container"),
         up = $("#up"),
         down = $("#down"),
-        stop = $("#stop");
+        stop = $("#stop"),
+        reset = $("#reset");
     const maxProgressValue = progressContainer.height();
+    const ANIMATION_SPEED = 300;
 
-    function setProgress(percentage, animate) {
+    function setProgress(percentage, animationSpeed) {
         currentProgress.animate(
             {
                 height: (percentage / 100) * maxProgressValue,
             },
-            animate,
+            animationSpeed,
             function () {}
         );
     }
@@ -60,12 +62,14 @@ $(document).ready(function (e) {
     stop.click(() => {
         socket.emit("stop-blinds");
     });
-
     up.click(() => {
         socket.emit("move-up");
     });
     down.click(() => {
         socket.emit("move-down");
+    });
+    reset.click(() => {
+        socket.emit("reset");
     });
 
     range.on("input", function () {
@@ -80,7 +84,7 @@ $(document).ready(function (e) {
 
     socket.on("start-pos", (value) => {
         range.attr("value", value);
-        setProgress(value, 300);
+        setProgress(value, ANIMATION_SPEED);
         changeBackground(range.attr("value"), range.attr("max"));
     });
     socket.on("set-arrows-enabled", (enabled) => {
@@ -93,8 +97,11 @@ $(document).ready(function (e) {
     socket.on("set-slider-enabled", (enabled) => {
         range.attr("disabled", !enabled);
     });
-    socket.on("blinds-position", (position) => {
+    socket.on("set-reset-enabled", (enabled) => {
+        reset.attr("disabled", !enabled);
+    });
+    socket.on("blinds-position", (data) => {
         // console.log(position);
-        setProgress(position, 0);
+        setProgress(data.blindsPosition, data.animate ? ANIMATION_SPEED : 0);
     });
 });

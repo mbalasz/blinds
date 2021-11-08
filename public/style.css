@@ -1,6 +1,6 @@
 .wrapper {
   display: grid;
-  grid-template-columns: auto 1fr 2fr;
+  grid-template-columns: auto 1fr 2fr 1fr;
   gap: 30px;
   /* grid-auto-rows: minmax(100px, auto); */
 }
@@ -23,6 +23,10 @@
 .three {
   grid-column: 3;
   grid-row: 1 / 5;
+}
+.four {
+  grid-column: 4;
+  grid-row: 2;
 }
 
 * {
@@ -104,7 +108,7 @@ input::-moz-focus-inner {
   cursor: pointer;
   display: flex;
   font-family: Inter, sans-serif;
-  width: 120px;
+  width: 100px;
   height: 48px;
   justify-content: center;
   line-height: 24px;

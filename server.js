@@ -51,8 +51,11 @@ io.on("connection", (socket) => {
         moveBlinds(dir, Math.abs(steps), DEFAULT_SPEED);
     });
 
-    socket.on("reset-blinds", () => {
-        setCurrentBlindsPosition(0);
+    socket.on("reset", () => {
+        if (blindsInMotion) {
+            return;
+        }
+        setBlindsPosition(0, true);
         storeBlindsPosition(0);
     });
 
@@ -76,16 +79,22 @@ io.on("connection", (socket) => {
         socket.emit("set-stop-enabled", blindsInMotion);
     const setSliderEnabled = (blindsInMotion) =>
         socket.emit("set-slider-enabled", !blindsInMotion);
+    const setResetEnabled = (blindsInMotion) =>
+        socket.emit("set-reset-enabled", !blindsInMotion);
     const statusObservers = [
         setArrowsEnabled,
         setStopEnabled,
         setSliderEnabled,
+        setResetEnabled,
     ];
     blindsStatusObservers.push(...statusObservers);
     blindsStatusObservers.forEach((observer) => observer(blindsInMotion));
 
-    const updateBlindsPosition = (blindsPosition) =>
-        socket.emit("blinds-position", blindsPosition);
+    const updateBlindsPosition = (blindsPosition, isReset) =>
+        socket.emit("blinds-position", {
+            blindsPosition: blindsPosition,
+            animate: isReset,
+        });
     blindsPositionObservers.push(updateBlindsPosition);
 
     socket.on("disconnect", () => {
@@ -109,7 +118,7 @@ io.on("connection", (socket) => {
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function storeBlindsPosition(value) {
-    fs.writeFileSync(blindsPositionFilePath, value);
+    fs.writeFileSync(blindsPositionFilePath, value.toString());
 }
 
 function readBlindsPosition() {
@@ -144,11 +153,11 @@ function setBlindsInMotion(inMotion) {
     blindsStatusObservers.forEach((observer) => observer(inMotion));
 }
 
-function setBlindsPosition(position) {
+function setBlindsPosition(position, isReset = false) {
     console.log("current blinds pos " + position);
     currentBlindsPosition = position;
     blindsPositionObservers.forEach((observer) =>
-        observer((position / MAX_STEPS) * 100)
+        observer((position / MAX_STEPS) * 100, isReset)
     );
 }
 
@@ -181,7 +190,7 @@ async function moveBlinds(dir, steps, speed) {
         counter++;
         setBlindsPosition(currentBlindsPosition + (dir == DOWN ? -1 : 1));
     }
-    storeBlindsPosition(currentBlindsPosition.toString());
+    storeBlindsPosition(currentBlindsPosition);
     setBlindsInMotion(false);
     interrupted = false;
     // setMotorEnabled(false);
@@ -208,7 +217,7 @@ function cleanup() {
 
 process.on("SIGINT", (_) => {
     console.log(`curr ${currentBlindsPosition}`);
-    storeBlindsPosition(currentBlindsPosition.toString());
+    storeBlindsPosition(currentBlindsPosition);
     cleanup();
     process.exit();
 });
