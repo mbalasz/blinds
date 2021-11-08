@@ -27,7 +27,6 @@ function generateGradient(startColor, endColor, steps) {
 }
 
 let bgGradient = generateGradient(bgBrightColor, bgDarkColor, bgSteps);
-console.log(bgGradient);
 
 function changeBackground(sliderValue, sliderMax) {
     let idx = Math.floor((sliderValue / sliderMax) * bgSteps);
