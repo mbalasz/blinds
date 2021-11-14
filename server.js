@@ -1,225 +1,127 @@
-const Gpio = require("onoff").Gpio;
 const express = require("express");
 const path = require("path");
 const { Server } = require("socket.io");
 const fs = require("fs");
+const { Blinds } = require("./blinds");
+const Motor = require("./motor");
 
 const app = express();
 const port = 3000;
 const blindsPositionFilePath = "blinds.txt";
 
-const DOWN = "down";
-const UP = "up";
-const DEFAULT_STEPS_UP = 50;
-const DEFAULT_STEPS_DOWN = 50;
-// const STEP_WAIT_TIME = 15;
-const STEP_WAIT_TIME = 1;
-const DEFAULT_SPEED = 1;
+const MOVE_UP_STEPS = 50;
+const MOVE_DOWN_STEPS = 50;
 const MAX_STEPS = 16500;
 
-let blindsInMotion = false;
-let dirPin;
-let pullPin;
-let enablePin;
-let currentBlindsPosition = readBlindsPosition() || 0;
-let interrupted = false;
-let blindsStatusObservers = [];
-let blindsPositionObservers = [];
+let initialBlindsPosition = readBlindsPositionSync() || 0;
+let blinds;
 
 app.use(express.static("public"));
-app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "/public/index.html"));
+app.get("/", (_, res) => {
+  res.sendFile(path.join(__dirname, "/public/index.html"));
 });
 
 const server = app.listen(port, () => {
-    console.log(`Example app listening at http://localhost:${port}`);
+  console.log(`Example app listening at http://localhost:${port}`);
 });
+
+let motor = new Motor(7, 18, 16);
+blinds = new Blinds(motor, initialBlindsPosition, MAX_STEPS);
 
 const io = new Server(server);
 io.on("connection", (socket) => {
-    socket.on("slider-changed", (percentage) => {
-        console.log("On slider changed");
-        if (currentBlindsPosition == null) {
-            console.log(
-                "Error currentBlindsPosition is set to null. Ignoring the request"
-            );
-            return;
-        }
-        let steps =
-            Math.floor((percentage / 100) * MAX_STEPS) - currentBlindsPosition;
-        let dir = steps < 0 ? DOWN : UP;
-        moveBlinds(dir, Math.abs(steps), DEFAULT_SPEED);
+  socket.on("slider-changed", (percentage) => {
+    console.log("On slider changed");
+    blinds.moveToPosition(percentage);
+  });
+
+  socket.on("reset", () => {
+    blinds.resetBlinds();
+  });
+
+  socket.on("stop-blinds", () => {
+    blinds.stopBlinds();
+  });
+
+  socket.on("move-up", () => {
+    blinds.moveUp(MOVE_UP_STEPS);
+  });
+
+  socket.on("move-down", () => {
+    blinds.moveDown(MOVE_DOWN_STEPS);
+  });
+
+  console.log("Connected");
+
+  const setArrowsEnabled = (blindsInMotion) =>
+    socket.emit("set-arrows-enabled", !blindsInMotion);
+  const setStopEnabled = (blindsInMotion) =>
+    socket.emit("set-stop-enabled", blindsInMotion);
+  const setSliderEnabled = (blindsInMotion) =>
+    socket.emit("set-slider-enabled", !blindsInMotion);
+  const setResetEnabled = (blindsInMotion) =>
+    socket.emit("set-reset-enabled", !blindsInMotion);
+  const storeCurrentBlindsPosition = (blindsInMotion) => {
+    if (!blindsInMotion) {
+      storeBlindsPositionSync(blinds.getBlindsPosition());
+    }
+  };
+  const statusObservers = [
+    setArrowsEnabled,
+    setStopEnabled,
+    setSliderEnabled,
+    setResetEnabled,
+    storeCurrentBlindsPosition,
+  ];
+  blinds.registerBlindsStatusObservers(statusObservers);
+
+  const updateBlindsPosition = (blindsPosition, maxPosition) =>
+    socket.emit("blinds-position", {
+      blindsPosition: (blindsPosition / maxPosition) * 100,
+      animate: false,
     });
+  const positionObservers = [updateBlindsPosition];
+  blinds.registerBlindsPositionObservers(positionObservers);
 
-    socket.on("reset", () => {
-        if (blindsInMotion) {
-            return;
-        }
-        setBlindsPosition(0, true);
-        storeBlindsPosition(0);
+  const resetBlinds = () =>
+    socket.emit("blinds-position", {
+      blindsPosition: 0,
+      animate: true,
     });
+  const resetObservers = [resetBlinds, storeCurrentBlindsPosition];
+  blinds.registerBlindsResetObservers(resetObservers);
 
-    socket.on("stop-blinds", () => {
-        setBlindsInMotion(false);
-    });
+  socket.on("disconnect", () => {
+    console.log("Disconnecting: blinds observers before: ");
+    blinds.unregisterBlindsStatusObservers(statusObservers);
+    blinds.unregisterBlindsPositionObservers(positionObservers);
+    blinds.unregisterBlindsResetObservers(resetObservers);
+  });
 
-    socket.on("move-up", () => {
-        moveBlinds(UP, DEFAULT_STEPS_UP, DEFAULT_SPEED);
-    });
-
-    socket.on("move-down", () => {
-        moveBlinds(DOWN, DEFAULT_STEPS_DOWN, DEFAULT_SPEED);
-    });
-
-    console.log("Connected");
-
-    const setArrowsEnabled = (blindsInMotion) =>
-        socket.emit("set-arrows-enabled", !blindsInMotion);
-    const setStopEnabled = (blindsInMotion) =>
-        socket.emit("set-stop-enabled", blindsInMotion);
-    const setSliderEnabled = (blindsInMotion) =>
-        socket.emit("set-slider-enabled", !blindsInMotion);
-    const setResetEnabled = (blindsInMotion) =>
-        socket.emit("set-reset-enabled", !blindsInMotion);
-    const statusObservers = [
-        setArrowsEnabled,
-        setStopEnabled,
-        setSliderEnabled,
-        setResetEnabled,
-    ];
-    blindsStatusObservers.push(...statusObservers);
-    blindsStatusObservers.forEach((observer) => observer(blindsInMotion));
-
-    const updateBlindsPosition = (blindsPosition, isReset) =>
-        socket.emit("blinds-position", {
-            blindsPosition: blindsPosition,
-            animate: isReset,
-        });
-    blindsPositionObservers.push(updateBlindsPosition);
-
-    socket.on("disconnect", () => {
-        console.log("Disconnecting: blinds observers before: ");
-        blindsStatusObservers.forEach((item) => console.log(item));
-        blindsPositionObservers.forEach((item) => console.log(item));
-        blindsStatusObservers = blindsStatusObservers.filter(
-            (item) => !statusObservers.includes(item)
-        );
-        blindsPositionObservers = blindsPositionObservers.filter(
-            (item) => ![updateBlindsPosition].includes(item)
-        );
-        console.log("blinds observers after: ");
-        blindsStatusObservers.forEach((item) => console.log(item));
-        blindsPositionObservers.forEach((item) => console.log(item));
-    });
-
-    socket.emit("start-pos", (currentBlindsPosition / MAX_STEPS) * 100);
+  socket.emit("start-pos", (blinds.getBlindsPosition() / MAX_STEPS) * 100);
 });
 
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function storeBlindsPosition(value) {
-    fs.writeFileSync(blindsPositionFilePath, value.toString());
+function storeBlindsPositionSync(value) {
+  console.log("Storing " + value);
+  fs.writeFileSync(blindsPositionFilePath, value.toString());
 }
 
-function readBlindsPosition() {
-    try {
-        return parseInt(fs.readFileSync(blindsPositionFilePath, "utf8"));
-    } catch (err) {
-        console.log(err);
-        return null;
-    }
-}
-
-function setupBlinds() {
-    if (blindsInMotion) {
-        return;
-    }
-    if (dirPin == null) {
-        dirPin = new Gpio(18, "out");
-    }
-    if (pullPin == null) {
-        pullPin = new Gpio(16, "out");
-    }
-    if (enablePin == null) {
-        enablePin = new Gpio(7, "out");
-    }
-}
-
-function setBlindsInMotion(inMotion) {
-    if (blindsInMotion && !inMotion) {
-        interrupted = true;
-    }
-    blindsInMotion = inMotion;
-    blindsStatusObservers.forEach((observer) => observer(inMotion));
-}
-
-function setBlindsPosition(position, isReset = false) {
-    console.log("current blinds pos " + position);
-    currentBlindsPosition = position;
-    blindsPositionObservers.forEach((observer) =>
-        observer((position / MAX_STEPS) * 100, isReset)
-    );
-}
-
-async function moveBlinds(dir, steps, speed) {
-    if (blindsInMotion) {
-        return;
-    }
-    console.log(
-        `Current position: ${currentBlindsPosition}. Moving blinds ${dir}, steps: ${steps}`
-    );
-    // setupBlinds();
-    // setMotorEnabled(true);
-
-    // dirPin.writeSync(dir == DOWN ? Gpio.HIGH : Gpio.LOW);
-    setBlindsInMotion(true);
-    let counter = 0;
-    while (true) {
-        // pullPin.writeSync(Gpio.HIGH);
-        // console.log("prestep");
-        await delay(1);
-        console.log("counter: " + counter);
-        // pullPin.writeSync(Gpio.LOW);
-        await delay(STEP_WAIT_TIME / speed);
-        if (counter >= steps || interrupted) {
-            if (interrupted) {
-                console.log(`interrupted: ${interrupted}`);
-            }
-            break;
-        }
-        counter++;
-        setBlindsPosition(currentBlindsPosition + (dir == DOWN ? -1 : 1));
-    }
-    storeBlindsPosition(currentBlindsPosition);
-    setBlindsInMotion(false);
-    interrupted = false;
-    // setMotorEnabled(false);
-}
-
-function setMotorEnabled(isEnabled) {
-    enablePin.writeSync(isEnabled ? Gpio.HIGH : Gpio.LOW);
-}
-
-function cleanup() {
-    if (dirPin) {
-        dirPin.unexport();
-        dirPin = null;
-    }
-    if (pullPin) {
-        pullPin.unexport();
-        pullPin = null;
-    }
-    if (enablePin) {
-        enablePin.unexport();
-        enablePin = null;
-    }
+function readBlindsPositionSync() {
+  try {
+    return parseInt(fs.readFileSync(blindsPositionFilePath, "utf8"));
+  } catch (err) {
+    console.log("Couldn't read the blinds position from disk");
+    return null;
+  }
 }
 
 process.on("SIGINT", (_) => {
-    console.log(`curr ${currentBlindsPosition}`);
-    storeBlindsPosition(currentBlindsPosition);
-    cleanup();
-    process.exit();
+  console.log(`curr ${initialBlindsPosition}`);
+  if (blinds) {
+    storeBlindsPositionSync(blinds.getBlindsPosition());
+    blinds.cleanup();
+  }
+  process.exit();
 });
 
 // def setup():
