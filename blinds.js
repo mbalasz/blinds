@@ -78,6 +78,9 @@ class Blinds {
     }
     // TODO: Make this one of the observers
     // storeBlindsPosition(currentBlindsPosition);
+    console.log(
+      `Blinds stopped: current position: ${this.currentBlindsPosition}`
+    );
     this.setBlindsInMotion(false);
     this.interrupted = false;
     // this.motor.setCurrent()
@@ -96,7 +99,6 @@ class Blinds {
   }
 
   setBlindsPosition(position) {
-    console.log("current blinds pos " + position);
     this.currentBlindsPosition = position;
     this.blindsPositionObservers.forEach((observer) =>
       observer(position, this.maxSteps)
@@ -123,7 +125,6 @@ class Blinds {
     this.blindsPositionObservers = this.blindsPositionObservers.filter(
       (item) => !observers.includes(item)
     );
-    console.log(this.blindsPositionObservers);
   }
 
   registerBlindsStatusObservers(observers) {
@@ -135,7 +136,6 @@ class Blinds {
     this.blindsStatusObservers = this.blindsStatusObservers.filter(
       (item) => !observers.includes(item)
     );
-    console.log(this.blindsStatusObservers);
   }
 
   registerBlindsResetObservers(observers) {
@@ -146,7 +146,6 @@ class Blinds {
     this.blindsResetObservers = this.blindsResetObservers.filter(
       (item) => !observers.includes(item)
     );
-    console.log(this.blindsResetObservers);
   }
 
   cleanup() {

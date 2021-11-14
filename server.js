@@ -31,7 +31,6 @@ blinds = new Blinds(motor, initialBlindsPosition, MAX_STEPS);
 const io = new Server(server);
 io.on("connection", (socket) => {
   socket.on("slider-changed", (percentage) => {
-    console.log("On slider changed");
     blinds.moveToPosition(percentage);
   });
 
@@ -92,7 +91,7 @@ io.on("connection", (socket) => {
   blinds.registerBlindsResetObservers(resetObservers);
 
   socket.on("disconnect", () => {
-    console.log("Disconnecting: blinds observers before: ");
+    console.log("Disconnecting...");
     blinds.unregisterBlindsStatusObservers(statusObservers);
     blinds.unregisterBlindsPositionObservers(positionObservers);
     blinds.unregisterBlindsResetObservers(resetObservers);
