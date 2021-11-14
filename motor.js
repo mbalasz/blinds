@@ -63,6 +63,17 @@ class Motor {
     return this.#readRegister(Motor.GCONF);
   }
 
+	// setCurrent(current) {}
+
+	setIHoldIRun(ihold, irun, delay) {
+		let ihold_irun = 0;
+		ihold_irun |= ihold;
+		ihold_irun |= (irun << 8);
+		ihold_irun |= (delay << 16);
+
+		this.#writeRegister(Motor.IHOLD_IRUN, ihold_irun);  
+	}
+
 	#computeCrc(datagram, init_value) {
 		let crc = init_value;
 		datagram.forEach((byte) => {
@@ -78,7 +89,23 @@ class Motor {
 		return crc;
 	}
 
-  #readRegister(reg) {
+	async #writeRegister(reg, data) {
+		let sync = 0x55;
+		let slave_addr = 0x55;
+		reg = reg | 0x80 // Setting the write bit.
+		// We send data in 4 bytes, starting with the highest byte.
+		let dataArr = [data >> 24 & 0xFF, data >> 16 & 0xFF, data >> 8 & 0xFF, data & 0xFF];
+		let datagram = [sync, slave_addr, reg, ...dataArr];
+		let crc = this.#computeCrc(datagram, 0);
+		this.port.write([...datagram, crc], function(err) {
+			if (err) {
+				return console.log("error in writing register ", err.message);
+			}
+			console.log("Register write successful");
+		});
+	}
+
+  async #readRegister(reg) {
 		let sync = 0x55;
 		let slave_addr = 0;
 		let datagram = [sync, slave_addr, reg];
@@ -87,11 +114,12 @@ class Motor {
 			if (err) {
 				return console.log("error in reading register ", err.message);
 			}
-			console.log("Successfully wrote register read");
+			console.log("Register read successful");
 		});
-		this.port.on("data", function() {
-			console.log("Data: ", this.port.read());
-		});
+		await delay(8);
+		console.log("reading...");
+		let ret = this.port.read(12);
+		console.log("Finished reading. " + ret);
   }
 }
 
