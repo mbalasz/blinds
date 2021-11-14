@@ -1,5 +1,6 @@
 const Gpio = require("onoff").Gpio;
 const { delay } = require("./util");
+const SerialPort = require('serialport')
 
 class Motor {
   static minStepDelayMs = 0.0001;
@@ -10,6 +11,12 @@ class Motor {
     // this.enablePin = new Gpio(enablePin, "out");
     // this.dirPin = new Gpio(dirPin, "out");
     // this.stepPin = new Gpio(stepPin, "out");
+		this.port = new SerialPort('/dev/serial0', {
+			baudRate: 57600
+		})
+		this.port.on('error', function(err) {
+			console.log("Error: ", err.message);
+		});
   }
 
   setEnabled(enabled) {
@@ -53,10 +60,40 @@ class Motor {
   }
 
   readGeneralInfo() {
-    return this.#readRegister(GCONF);
+    return this.#readRegister(Motor.GCONF);
   }
 
-  #readRegister(reg) {}
+	#computeCrc(datagram, init_value) {
+		let crc = init_value;
+		datagram.forEach((byte) => {
+			for (let i = 0; i < 8; i++) {
+				if ((crc >> 7) ^ (byte & 0x01)) {
+					crc = (crc << 1) ^ 0x07;
+				} else {
+					crc = crc << 1;
+				}
+				byte = byte >> 1;
+			}
+		});
+		return crc;
+	}
+
+  #readRegister(reg) {
+		let sync = 0x55;
+		let slave_addr = 0;
+		let datagram = [sync, slave_addr, reg];
+		let crc = this.#computeCrc(datagram, 0);
+		this.port.write([...datagram, crc], function(err) {
+			if (err) {
+				return console.log("error in reading register ", err.message);
+			}
+			console.log("Successfully wrote register read");
+		});
+		this.port.on("data", function() {
+			console.log("Data: ", this.port.read());
+		});
+  }
 }
 
 module.exports = Motor;
+
