@@ -3,6 +3,8 @@ const { delay } = require("./util");
 
 class Motor {
   static minStepDelayMs = 0.0001;
+  static IHOLD_IRUN = 0x10;
+  static GCONF = 0x00;
 
   constructor(enablePin, dirPin, stepPin) {
     // this.enablePin = new Gpio(enablePin, "out");
@@ -49,6 +51,12 @@ class Motor {
       this.enablePin = null;
     }
   }
+
+  readGeneralInfo() {
+    return this.#readRegister(GCONF);
+  }
+
+  #readRegister(reg) {}
 }
 
 module.exports = Motor;
