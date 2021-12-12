@@ -2,8 +2,8 @@ const { delay } = require("./util");
 
 const DOWN = "down";
 const UP = "up";
-// const STEP_WAIT_TIME = 15;
-const STEP_WAIT_TIME = 1;
+const STEP_WAIT_TIME = 15;
+// const STEP_WAIT_TIME = 1;
 const DEFAULT_SPEED = 1;
 
 class Blinds {
@@ -52,8 +52,9 @@ class Blinds {
     console.log(
       `Current position: ${this.currentBlindsPosition}. Moving blinds ${dir}, steps: ${steps}`
     );
-    // this.motor.setEnabled(true);
-    // this.motor.setDir(dir == DOWN ? 0 : 1);
+    this.motor.setEnabled(true);
+    this.motor.setIRun(31);
+    this.motor.setDirection(dir == DOWN ? 0 : 1);
     this.setBlindsInMotion(true);
     this.interrupted = false;
     let counter = 0;
@@ -71,7 +72,7 @@ class Blinds {
         }
         break;
       }
-      // await this.motor.runStep();
+      await this.motor.runStep();
       await delay(STEP_WAIT_TIME / speed);
       counter++;
       this.setBlindsPosition(newBlindsPosition);
@@ -83,7 +84,7 @@ class Blinds {
     );
     this.setBlindsInMotion(false);
     this.interrupted = false;
-    // this.motor.setCurrent()
+    this.motor.setIRun(6);
   }
 
   stopBlinds() {

@@ -22,7 +22,7 @@ app.get("/", (_, res) => {
 });
 
 const server = app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`);
+  console.log(`Blinds server listening at http://localhost:${port}`);
 });
 
 let motor = new Motor(7, 18, 16);
