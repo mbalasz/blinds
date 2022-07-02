@@ -25,7 +25,7 @@ const server = app.listen(port, () => {
   console.log(`Blinds server listening at http://localhost:${port}`);
 });
 
-let motor = new Motor(7, 18, 16);
+let motor = new Motor(/* enablePin= */ 21, /*dirPin= */ 23, /* stepPin= */ 24);
 blinds = new Blinds(motor, initialBlindsPosition, MAX_STEPS);
 
 const io = new Server(server);
@@ -101,7 +101,7 @@ io.on("connection", (socket) => {
 });
 
 function storeBlindsPositionSync(value) {
-  console.log("Storing " + value);
+  console.log("Storing blinds position: " + value);
   fs.writeFileSync(blindsPositionFilePath, value.toString());
 }
 
