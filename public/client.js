@@ -26,7 +26,7 @@ function generateGradient(startColor, endColor, steps) {
   return gradient;
 }
 
-let bgGradient = generateGradient(bgBrightColor, bgDarkColor, bgSteps);
+let bgGradient = generateGradient(bgDarkColor, bgBrightColor, bgSteps);
 
 function changeBackground(sliderValue, sliderMax) {
   let idx = Math.floor((sliderValue / sliderMax) * bgSteps);
@@ -76,17 +76,16 @@ $(document).ready(function (e) {
     changeBackground(this.value, this.max);
   });
   range.on("mouseup touchend", function () {
-    socket.emit("slider-changed", this.value);
+    socket.emit("slider-changed", this.max - this.value);
   });
 
   up.attr("disabled", true);
   stop.attr("disabled", true);
 
   socket.on("start-pos", (value) => {
-    console.log("start-pos " + value);
     range.attr("value", value);
     setProgress(value, ANIMATION_SPEED);
-    changeBackground(range.attr("value"), range.attr("max"));
+    changeBackground(range.attr("max") - range.attr("value"), range.attr("max"));
   });
   socket.on("set-arrows-enabled", (enabled) => {
     up.attr("disabled", !enabled);

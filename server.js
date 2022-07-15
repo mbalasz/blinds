@@ -25,7 +25,7 @@ const server = app.listen(port, () => {
   console.log(`Blinds server listening at http://localhost:${port}`);
 });
 
-let motor = new Motor(/* enablePin= */ 21, /*dirPin= */ 23, /* stepPin= */ 24);
+let motor = new Motor(/* enablePin= */ 21, /*dirPin= */ 23, /* stepPin= */ 24, 'motor.py');
 blinds = new Blinds(motor, initialBlindsPosition, MAX_STEPS);
 
 const io = new Server(server);

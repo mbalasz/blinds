@@ -1,10 +1,6 @@
-const { delay } = require("./util");
-
 const DOWN = "down";
 const UP = "up";
-const STEP_WAIT_TIME = 15;
-// const STEP_WAIT_TIME = 1;
-const DEFAULT_SPEED = 1;
+const DEFAULT_SPEED = 5;
 
 class Blinds {
   constructor(motor, initialBlindsPosition, maxSteps) {
@@ -33,7 +29,7 @@ class Blinds {
     let steps =
       Math.floor((percentage / 100) * this.maxSteps) -
       this.currentBlindsPosition;
-    let dir = steps < 0 ? DOWN : UP;
+    let dir = steps > 0 ? DOWN : UP;
     await this.move(Math.abs(steps), dir, speed);
   }
 
@@ -49,52 +45,36 @@ class Blinds {
     if (this.blindsInMotion) {
       return;
     }
-    console.log(
-      `Current position: ${this.currentBlindsPosition}. Moving blinds ${dir}, steps: ${steps}`
-    );
-    this.motor.setEnabled(true);
-    this.motor.setIRun(31);
-    this.motor.setDirection(dir == DOWN ? 0 : 1);
     this.setBlindsInMotion(true);
-    this.interrupted = false;
-    let counter = 0;
-    while (true) {
+    let lastBlindsPosition = this.currentBlindsPosition;
+    this.motor.move(steps, dir, speed, (message) => {
+      const counter = parseInt(
+        message.split(/\r?\n/).reverse().find((s) => !isNaN(s) && !isNaN(parseInt(s))))
+      if (!counter) {
+        return;
+      }
       let newBlindsPosition =
-        this.currentBlindsPosition + (dir == DOWN ? -1 : 1);
+      // Moving blinds down increases the motor counter, thus blind's position.
+        lastBlindsPosition + (dir == DOWN ? counter : -counter);
       if (
-        counter >= steps ||
-        this.interrupted ||
         newBlindsPosition < 0 ||
         newBlindsPosition > this.maxSteps
       ) {
-        if (this.interrupted) {
-          console.log(`interrupted: ${this.interrupted}`);
-        }
-        break;
+        this.stopBlinds();
+      } else {
+        this.setBlindsPosition(newBlindsPosition);
       }
-      await this.motor.runStep();
-      await delay(STEP_WAIT_TIME / speed);
-      counter++;
-      this.setBlindsPosition(newBlindsPosition);
-    }
-    // TODO: Make this one of the observers
-    // storeBlindsPosition(currentBlindsPosition);
-    console.log(
-      `Blinds stopped: current position: ${this.currentBlindsPosition}`
-    );
-    this.setBlindsInMotion(false);
-    this.interrupted = false;
-    this.motor.setIRun(6);
+    },
+      (exitCode) => {
+        this.setBlindsInMotion(false);
+      });
   }
 
   stopBlinds() {
-    this.interrupted = true;
+    this.motor.stop();
   }
 
   setBlindsInMotion(inMotion) {
-    if (this.blindsInMotion && !inMotion) {
-      this.interrupted = true;
-    }
     this.blindsInMotion = inMotion;
     this.blindsStatusObservers.forEach((observer) => observer(inMotion));
   }
@@ -150,7 +130,6 @@ class Blinds {
   }
 
   cleanup() {
-    this.motor.cleanup();
   }
 }
 

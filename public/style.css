@@ -77,7 +77,7 @@ input::-moz-focus-inner {
 .progress-bar {
   width: 100%;
   position: absolute;
-  bottom: 0;
+  top: 0;
   left: 0;
   background: #181818;
 }
