@@ -3,18 +3,23 @@ const path = require("path");
 const { Server } = require("socket.io");
 const fs = require("fs");
 const { Blinds } = require("./blinds");
+const BlindsScheduler = require('./blinds_scheduler')
 const Motor = require("./motor");
 
 const app = express();
 const port = 3000;
 const blindsPositionFilePath = "blinds.txt";
+const blindsScheduleFilePath = "blinds_schedule.txt";
 
 const MOVE_UP_STEPS = 50;
 const MOVE_DOWN_STEPS = 50;
 const MAX_STEPS = 16500;
 
-let initialBlindsPosition = readBlindsPositionSync() || 0;
-let blinds;
+const motor = new Motor(/* enablePin= */ 21, /*dirPin= */ 23, /* stepPin= */ 24, 'motor.py');
+const initialBlindsPosition = readBlindsPositionSync() || 0;
+const blinds = new Blinds(motor, initialBlindsPosition, MAX_STEPS);
+const blindsScheduler = new BlindsScheduler(blinds);
+const storedBlindsSchedule = readBlindsScheduleSync();
 
 app.use(express.static("public"));
 app.get("/", (_, res) => {
@@ -24,9 +29,6 @@ app.get("/", (_, res) => {
 const server = app.listen(port, () => {
   console.log(`Blinds server listening at http://localhost:${port}`);
 });
-
-let motor = new Motor(/* enablePin= */ 21, /*dirPin= */ 23, /* stepPin= */ 24, 'motor.py');
-blinds = new Blinds(motor, initialBlindsPosition, MAX_STEPS);
 
 const io = new Server(server);
 io.on("connection", (socket) => {
@@ -109,7 +111,31 @@ function readBlindsPositionSync() {
   try {
     return parseInt(fs.readFileSync(blindsPositionFilePath, "utf8"));
   } catch (err) {
-    console.log("Couldn't read the blinds position from disk");
+    console.log("Couldn't read the blinds position from disk", err);
+    return null;
+  }
+}
+
+function readBlindsScheduleSync() {
+  try {
+    const file = fs.readFileSync(blindsScheduleFilePath, "utf-8")
+    file.split(/\r?\n/).forEach((line) => {
+      const idxOfTimeSubstr = line.search(/[0-9]/);
+      const idxOfTimeSeparator = line.search(/:/)
+      const hour = Number(line.substring(idxOfTimeSubstr, idxOfTimeSeparator));
+      const minute = Number(line.substring(idxOfTimeSeparator + 1));
+      if (isNaN(hour) || isNaN(minute)) {
+        console.log("Error: couldn't parse the schedule");
+        return;
+      }
+      if (line.startsWith('open')) {
+        blindsScheduler.scheduleBlindsOpen(hour, minute);
+      } else if (line.startsWith('close')) {
+        blindsScheduler.scheduleBlindsClose(hour, minute);
+      } 
+    })
+  } catch (err) {
+    console.log("Couldn't read the blinds schedule", err);
     return null;
   }
 }
@@ -122,64 +148,3 @@ process.on("SIGINT", (_) => {
   }
   process.exit();
 });
-
-// def setup():
-//         GPIO.setmode(GPIO.BCM)
-//         GPIO.setup(dir_pin, GPIO.OUT)
-//         GPIO.setup(pull_pin, GPIO.OUT)
-//         GPIO.setup(enable_pin, GPIO.OUT)
-//         GPIO.output(enable_pin, GPIO.LOW)
-//         set_microstep()
-
-// def set_microstep():
-//         GPIO.setup(ms1_pin, GPIO.OUT)
-//         GPIO.setup(ms2_pin, GPIO.OUT)
-//         GPIO.output(ms1_pin, GPIO.LOW)
-//         GPIO.output(ms2_pin, GPIO.LOW)
-
-// def move_blinds(dir, steps=DEFAULT_STEPS, speed=DEFAULT_SPEED_MULTIPLIER):
-//         setup()
-//         dir_gpio = GPIO.HIGH if dir == "down" or dir == "d" else GPIO.LOW
-//         GPIO.output(dir_pin, dir_gpio)
-//         counter=0
-//         while True:
-//                 GPIO.output(pull_pin, GPIO.HIGH)
-//                 time.sleep(0.001)
-//                 GPIO.output(pull_pin, GPIO.LOW)
-//                 time.sleep(SPEED/speed)
-//                 counter = counter + 1
-//                 print("Counter: {}".format(counter))
-//                 if counter >= steps:
-//                         break
-//         GPIO.setup(enable_pin, GPIO.HIGH)
-
-// def main():
-//         dir = input("which direction (up/down/schedule)? ")
-//         if dir != "up" and dir != "down" and dir != "u" and dir != "d" and dir != "schedule" and dir != "s":
-//                 print("wrong input")
-//                 return
-//         try:
-//                 if dir == "s" or dir == "schedule":
-//                         schedule_time_down = DEFAULT_SCHEDULE_TIME_DOWN
-//                         #schedule_time_down_full = DEFAULT_SCHEDULE_TIME_DOWN_FULL
-//                         schedule_time_up = DEFAULT_SCHEDULE_TIME_UP
-//                         steps = DEFAULT_STEPS
-//                         #schedule.every().day.at(schedule_time_down).do(move_blinds, "d", steps * DEFAULT_PARTIAL_STEPS_FACTOR)
-//                         #schedule.every().day.at(schedule_time_down_full).do(move_blinds, "d", steps * (1 - DEFAULT_PARTIAL_STEPS_FACTOR))
-//                         schedule.every().day.at(schedule_time_down).do(move_blinds, "d", steps)
-//                         schedule.every().day.at(schedule_time_up).do(move_blinds, "u")
-//                         print("Scheduling blinds going down at {} and up at {}".format(schedule_time_down, schedule_time_up))
-//                         while True:
-//                                 schedule.run_pending()
-//                                 time.sleep(1)
-//                 else:
-//                         steps = input("How many steps? ")
-//                         try:
-//                                 steps = DEFAULT_STEPS if steps == "" else int(steps)
-//                                 speed = input("What speed multiplier? ")
-//                                 speed = DEFAULT_SPEED_MULTIPLIER if speed == "" else int(speed)
-//                                 move_blinds(dir, steps, speed)
-//                         except ValueError:
-//                                 print("Steps value must be a number")
-//         except KeyboardInterrupt:
-//                 GPIO.cleanup()

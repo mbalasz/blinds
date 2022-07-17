@@ -47,7 +47,7 @@ class Blinds {
     }
     this.setBlindsInMotion(true);
     let lastBlindsPosition = this.currentBlindsPosition;
-    this.motor.move(steps, dir, speed, (message) => {
+    return new Promise((resolve, reject) => this.motor.move(steps, dir, speed, (message) => {
       const counter = parseInt(
         message.split(/\r?\n/).reverse().find((s) => !isNaN(s) && !isNaN(parseInt(s))))
       if (!counter) {
@@ -67,7 +67,8 @@ class Blinds {
     },
       (exitCode) => {
         this.setBlindsInMotion(false);
-      });
+        resolve();
+      }));
   }
 
   stopBlinds() {
