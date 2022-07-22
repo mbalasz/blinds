@@ -3,7 +3,7 @@ import RPi.GPIO as GPIO
 import time
 
 MIN_STEP_DELAY_MS = 0.001
-STEP_WAIT_TIME = 0.015;
+STEP_WAIT_TIME = 0.03;
 
 enable_pin = int(sys.argv[1])
 dir_pin = int(sys.argv[2])
