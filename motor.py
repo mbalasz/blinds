@@ -3,7 +3,7 @@ import RPi.GPIO as GPIO
 import time
 
 MIN_STEP_DELAY_MS = 0.001
-STEP_WAIT_TIME = 0.005;
+STEP_WAIT_TIME = 0.015;
 
 enable_pin = int(sys.argv[1])
 dir_pin = int(sys.argv[2])
@@ -18,9 +18,9 @@ def setup(enable_pin, step_pin, dir_pin):
 def move(steps, dir, speed_multiplier):
     GPIO.output(enable_pin, GPIO.LOW)
     if dir == 'down':
-        GPIO.output(dir_pin, GPIO.LOW)
-    elif dir == 'up':
         GPIO.output(dir_pin, GPIO.HIGH)
+    elif dir == 'up':
+        GPIO.output(dir_pin, GPIO.LOW)
     curr_steps = 0
     try:
         while curr_steps < steps:
