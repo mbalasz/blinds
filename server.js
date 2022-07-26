@@ -20,6 +20,17 @@ const initialBlindsPosition = readBlindsPositionSync() || 0;
 const blinds = new Blinds(motor, initialBlindsPosition, MAX_STEPS);
 const blindsScheduler = new BlindsScheduler(blinds);
 const storedBlindsSchedule = readBlindsScheduleSync();
+blindsScheduler.scheduleBlindsOpen(
+  storedBlindsSchedule.open.hour, storedBlindsSchedule.open.minute);
+blindsScheduler.scheduleBlindsClose(
+  storedBlindsSchedule.close.hour, storedBlindsSchedule.close.minute);
+
+const storeCurrentBlindsPosition = (blindsInMotion) => {
+  if (!blindsInMotion) {
+    storeBlindsPositionSync(blinds.getBlindsPosition());
+  }
+};
+blinds.registerBlindsStatusObservers([storeCurrentBlindsPosition]);
 
 app.use(express.static("public"));
 app.get("/", (_, res) => {
@@ -62,17 +73,11 @@ io.on("connection", (socket) => {
     socket.emit("set-slider-enabled", !blindsInMotion);
   const setResetEnabled = (blindsInMotion) =>
     socket.emit("set-reset-enabled", !blindsInMotion);
-  const storeCurrentBlindsPosition = (blindsInMotion) => {
-    if (!blindsInMotion) {
-      storeBlindsPositionSync(blinds.getBlindsPosition());
-    }
-  };
   const statusObservers = [
     setArrowsEnabled,
     setStopEnabled,
     setSliderEnabled,
     setResetEnabled,
-    storeCurrentBlindsPosition,
   ];
   blinds.registerBlindsStatusObservers(statusObservers);
 
@@ -128,11 +133,19 @@ function readBlindsScheduleSync() {
         console.log("Error: couldn't parse the schedule");
         return;
       }
+      const schedule = {}
       if (line.startsWith('open')) {
-        blindsScheduler.scheduleBlindsOpen(hour, minute);
+        schedule.open = {
+          hour: hour,
+          minute: minute
+        }
       } else if (line.startsWith('close')) {
-        blindsScheduler.scheduleBlindsClose(hour, minute);
-      } 
+        schedule.close = {
+          hour: hour,
+          minute: minute
+        }
+      }
+      return schedule;
     })
   } catch (err) {
     console.log("Couldn't read the blinds schedule", err);
@@ -146,5 +159,6 @@ process.on("SIGINT", (_) => {
     storeBlindsPositionSync(blinds.getBlindsPosition());
     blinds.cleanup();
   }
+  blinds.unregisterBlindsStatusObservers([storeCurrentBlindsPosition]);
   process.exit();
 });
