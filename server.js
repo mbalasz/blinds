@@ -21,9 +21,9 @@ const blinds = new Blinds(motor, initialBlindsPosition, MAX_STEPS);
 const blindsScheduler = new BlindsScheduler(blinds);
 const storedBlindsSchedule = readBlindsScheduleSync();
 blindsScheduler.scheduleBlindsOpen(
-  storedBlindsSchedule.open.hour, storedBlindsSchedule.open.minute);
+  storedBlindsSchedule['open'].hour, storedBlindsSchedule['open'].minute);
 blindsScheduler.scheduleBlindsClose(
-  storedBlindsSchedule.close.hour, storedBlindsSchedule.close.minute);
+  storedBlindsSchedule['close'].hour, storedBlindsSchedule['close'].minute);
 
 const storeCurrentBlindsPosition = (blindsInMotion) => {
   if (!blindsInMotion) {
@@ -124,6 +124,7 @@ function readBlindsPositionSync() {
 function readBlindsScheduleSync() {
   try {
     const file = fs.readFileSync(blindsScheduleFilePath, "utf-8")
+    const schedule = {}
     file.split(/\r?\n/).forEach((line) => {
       const idxOfTimeSubstr = line.search(/[0-9]/);
       const idxOfTimeSeparator = line.search(/:/)
@@ -133,20 +134,19 @@ function readBlindsScheduleSync() {
         console.log("Error: couldn't parse the schedule");
         return;
       }
-      const schedule = {}
       if (line.startsWith('open')) {
-        schedule.open = {
+        schedule['open'] = {
           hour: hour,
           minute: minute
         }
       } else if (line.startsWith('close')) {
-        schedule.close = {
+        schedule['close'] = {
           hour: hour,
           minute: minute
         }
       }
-      return schedule;
-    })
+    });
+    return schedule;
   } catch (err) {
     console.log("Couldn't read the blinds schedule", err);
     return null;

@@ -2,12 +2,16 @@ import sys
 import RPi.GPIO as GPIO
 import time
 
+#from TMC_2209.TMC_2209_StepperDriver import *
+
 MIN_STEP_DELAY_MS = 0.001
 STEP_WAIT_TIME = 0.03;
+MOVE_CURRENT = 600
 
 enable_pin = int(sys.argv[1])
 dir_pin = int(sys.argv[2])
 step_pin = int(sys.argv[3])
+#tmc = TMC_2209()
 
 def setup(enable_pin, step_pin, dir_pin):
     GPIO.setmode(GPIO.BCM)
@@ -21,6 +25,7 @@ def move(steps, dir, speed_multiplier):
         GPIO.output(dir_pin, GPIO.HIGH)
     elif dir == 'up':
         GPIO.output(dir_pin, GPIO.LOW)
+#    tmc.setCurrent(MOVE_CURRENT)
     curr_steps = 0
     try:
         while curr_steps < steps:
