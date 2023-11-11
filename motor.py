@@ -21,7 +21,6 @@ def setup(enable_pin, step_pin, dir_pin):
     GPIO.setup(enable_pin, GPIO.OUT)
 
 def move(steps, dir, speed_multiplier):
-    print("Move by steps {}, and dir {}".format( steps, dir) , flush=True)
     if steps <= 0:
         return
     GPIO.output(enable_pin, GPIO.LOW)
@@ -31,7 +30,6 @@ def move(steps, dir, speed_multiplier):
         GPIO.output(dir_pin, GPIO.LOW)
     else:
         GPIO.output(dir_pin, GPIO.HIGH)
-    time.sleep(MIN_STEP_DELAY_MS)
 #    tmc.setCurrent(MOVE_CURRENT)
     curr_steps = 0
     overshoot_triggered = False
@@ -39,19 +37,16 @@ def move(steps, dir, speed_multiplier):
         while curr_steps < steps + 2 * OVERSHOOT:
             if curr_steps >= steps + OVERSHOOT and not overshoot_triggered:
                 if dir == 'up':
-                    print("Reversing from up to down", flush=True)
                     GPIO.output(dir_pin, GPIO.HIGH)
                 else:
-                    print("Reversing from down to up", flush=True)
                     GPIO.output(dir_pin, GPIO.LOW) 
                 overshoot_triggered = True
-                time.sleep(MIN_STEP_DELAY_MS)
 
             GPIO.output(step_pin, GPIO.HIGH)
             time.sleep(MIN_STEP_DELAY_MS)
             GPIO.output(step_pin, GPIO.LOW)
             curr_steps += 1
-            if curr_steps < steps:
+            if curr_steps <= steps:
                 print(curr_steps, flush=True, end="")
             time.sleep(STEP_WAIT_TIME / speed_multiplier)
     except KeyboardInterrupt:

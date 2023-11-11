@@ -8,19 +8,17 @@ class BlindsScheduler {
     scheduleBlindsOpen(hour, minute) {
         console.log(`Scheduling blinds to open at 
             ${this.getTimeFormattedString(hour)}:${this.getTimeFormattedString(minute)}`);
-        this.scheduleMoveBlindsToPosition(hour, minute, 0);
+        this.scheduleCallback(hour, minute, () => this.blinds.moveUpToEnd());
     }
 
     scheduleBlindsClose(hour, minute) {
         console.log(`Scheduling blinds to close at 
             ${this.getTimeFormattedString(hour)}:${this.getTimeFormattedString(minute)}`);
-        this.scheduleMoveBlindsToPosition(hour, minute, 100);
+        this.scheduleCallback(hour, minute, () => this.blinds.moveDownToEnd());
     }
 
-    scheduleMoveBlindsToPosition(hour, minute, position) {
-        cron.schedule(`${minute} ${hour} * * *`, () => {
-            this.blinds.moveToPosition(position);
-        })
+    scheduleCallback(hour, minute, callback) {
+        cron.schedule(`${minute} ${hour} * * *`, callback)
     }
 
     getTimeFormattedString(number) {

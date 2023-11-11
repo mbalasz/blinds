@@ -2,6 +2,10 @@ const DOWN = "down";
 const UP = "up";
 const DEFAULT_SPEED = 5;
 
+/**
+ * 0 represents the blinds at the very bottom (fully closed)
+ * maxSteps represents the blinds at the very top (fully open)
+ */
 class Blinds {
   constructor(motor, initialBlindsPosition, maxSteps) {
     if (isNaN(maxSteps) || maxSteps < 0) {
@@ -25,22 +29,34 @@ class Blinds {
     this.blindsResetObservers = [];
   }
 
+  /**
+   * 0% represents the blinds at the very bottom (fully closed)
+   * 100% represents the blinds at the very top (fully open)
+   */
   async moveToPosition(percentage, speed = DEFAULT_SPEED) {
     let steps =
       Math.floor((percentage / 100) * this.maxSteps) -
       this.currentBlindsPosition;
-    let dir = steps > 0 ? DOWN : UP;
+    let dir = steps > 0 ? UP : DOWN;
     await this.move(Math.abs(steps), dir, speed);
   }
 
+  async moveUpToEnd(speed = DEFAULT_SPEED) {
+    this.moveToPosition(/* percentage = */ 100, speed);
+  }
+
+  async moveDownToEnd(speed = DEFAULT_SPEED) {
+    this.moveToPosition(/* percentage = */ 0, speed);
+  }
+
   async moveUp(steps, speed = DEFAULT_SPEED) {
-    const finalPos = Math.max(this.currentBlindsPosition - steps, 0);
-    await this.move(this.currentBlindsPosition - finalPos, UP, speed);
+    const maxSafeSteps = Math.min(steps, this.maxSteps - this.currentBlindsPosition);
+    await this.move(maxSafeSteps, UP, speed);
   }
 
   async moveDown(steps, speed = DEFAULT_SPEED) {
-    const finalPos = Math.min(this.currentBlindsPosition + steps, this.maxSteps);
-    await this.move(finalPos - this.currentBlindsPosition, DOWN, speed);
+    const maxSafeSteps = Math.min(steps, this.currentBlindsPosition);
+    await this.move(maxSafeSteps, DOWN, speed);
   }
 
   async move(steps, dir, speed) {
@@ -55,10 +71,7 @@ class Blinds {
       if (!counter) {
         return;
       }
-	    // console.log(counter);
-      let newBlindsPosition =
-      // Moving blinds down increases the motor counter, thus blind's position.
-        lastBlindsPosition + (dir == DOWN ? counter : -counter);
+      let newBlindsPosition = lastBlindsPosition + (dir == UP ? counter : -counter);
       if (
         newBlindsPosition < 0 ||
         newBlindsPosition > this.maxSteps
@@ -94,12 +107,20 @@ class Blinds {
     return this.currentBlindsPosition;
   }
 
-  resetBlinds() {
+  resetBlindsUp() {
+    if (this.blindsInMotion) {
+      return;
+    }
+    this.currentBlindsPosition = this.maxSteps;
+    this.blindsResetObservers.forEach((observer) => observer(this.currentBlindsPosition));
+  }
+
+  resetBlindsDown() {
     if (this.blindsInMotion) {
       return;
     }
     this.currentBlindsPosition = 0;
-    this.blindsResetObservers.forEach((observer) => observer());
+    this.blindsResetObservers.forEach((observer) => observer(this.currentBlindsPosition));
   }
 
   registerBlindsPositionObservers(observers) {

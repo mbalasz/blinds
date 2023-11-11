@@ -26,12 +26,16 @@ blindsScheduler.scheduleBlindsOpen(
 blindsScheduler.scheduleBlindsClose(
   storedBlindsSchedule['close'].hour, storedBlindsSchedule['close'].minute);
 
-const storeCurrentBlindsPosition = (blindsInMotion) => {
+const storeCurrentBlindsPositionOnMotionChange = (blindsInMotion) => {
   if (!blindsInMotion) {
     storeBlindsPositionSync(blinds.getBlindsPosition());
   }
 };
-blinds.registerBlindsStatusObservers([storeCurrentBlindsPosition]);
+blinds.registerBlindsStatusObservers([storeCurrentBlindsPositionOnMotionChange]);
+const storeCurrentBlindsPositionOnReset = (resetPosition) => {
+  storeBlindsPositionSync(resetPosition);
+}
+blinds.registerBlindsResetObservers([storeCurrentBlindsPositionOnReset]);
 
 app.use(express.static("public"));
 app.get("/", (_, res) => {
@@ -48,8 +52,12 @@ io.on("connection", (socket) => {
     blinds.moveToPosition(percentage);
   });
 
-  socket.on("reset", () => {
-    blinds.resetBlinds();
+  socket.on("reset-up", () => {
+    blinds.resetBlindsUp();
+  });
+
+  socket.on("reset-down", () => {
+    blinds.resetBlindsDown();
   });
 
   socket.on("stop-blinds", () => {
@@ -60,8 +68,16 @@ io.on("connection", (socket) => {
     blinds.moveUp(MOVE_UP_STEPS);
   });
 
+  socket.on("move-up-end", () => {
+    blinds.moveUpToEnd();
+  });
+
   socket.on("move-down", () => {
     blinds.moveDown(MOVE_DOWN_STEPS);
+  });
+
+  socket.on("move-down-end", () => {
+    blinds.moveDownToEnd();
   });
 
   console.log("Connected");
@@ -90,12 +106,12 @@ io.on("connection", (socket) => {
   const positionObservers = [updateBlindsPosition];
   blinds.registerBlindsPositionObservers(positionObservers);
 
-  const resetBlinds = () =>
+  const resetBlinds = (position) =>
     socket.emit("blinds-position", {
-      blindsPosition: 0,
+      blindsPosition: position / MAX_STEPS * 100,
       animate: true,
     });
-  const resetObservers = [resetBlinds, storeCurrentBlindsPosition];
+  const resetObservers = [resetBlinds];
   blinds.registerBlindsResetObservers(resetObservers);
 
   socket.on("disconnect", () => {
@@ -160,6 +176,6 @@ process.on("SIGINT", (_) => {
     storeBlindsPositionSync(blinds.getBlindsPosition());
     blinds.cleanup();
   }
-  blinds.unregisterBlindsStatusObservers([storeCurrentBlindsPosition]);
+  blinds.unregisterBlindsStatusObservers([storeCurrentBlindsPositionOnMotionChange]);
   process.exit();
 });

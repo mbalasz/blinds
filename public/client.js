@@ -1,7 +1,7 @@
 const bgBrightColor = {
-  r: 255,
-  g: 151,
-  b: 112,
+  r: 199,
+  g: 109,
+  b: 0,
 };
 const bgDarkColor = {
   r: 0,
@@ -43,16 +43,19 @@ $(document).ready(function (e) {
     currentProgress = $(".progress-bar"),
     progressContainer = $(".progress-container"),
     up = $("#up"),
+    upEnd = $("#up-end"),
     down = $("#down"),
+    downEnd = $("#down-end"),
     stop = $("#stop"),
-    reset = $("#reset");
+    resetUp = $("#reset-up");
+    resetDown = $("#reset-down");
   const maxProgressValue = progressContainer.height();
   const ANIMATION_SPEED = 300;
 
   function setProgress(percentage, animationSpeed) {
     currentProgress.animate(
       {
-        height: (percentage / 100) * maxProgressValue,
+        height: (1 - (percentage / 100)) * maxProgressValue,
       },
       animationSpeed,
       function () {}
@@ -65,18 +68,27 @@ $(document).ready(function (e) {
   up.click(() => {
     socket.emit("move-up");
   });
+  upEnd.click(() => {
+    socket.emit("move-up-end");
+  });
   down.click(() => {
     socket.emit("move-down");
   });
-  reset.click(() => {
-    socket.emit("reset");
+  downEnd.click(() => {
+    socket.emit("move-down-end");
+  });
+  resetUp.click(() => {
+    socket.emit("reset-up");
+  });
+  resetDown.click(() => {
+    socket.emit("reset-down");
   });
 
   range.on("input", function () {
-    changeBackground(this.value, this.max);
+    // changeBackground(this.value, this.max);
   });
   range.on("mouseup touchend", function () {
-    socket.emit("slider-changed", this.max - this.value);
+    socket.emit("slider-changed", this.value);
   });
 
   up.attr("disabled", true);
@@ -85,7 +97,8 @@ $(document).ready(function (e) {
   socket.on("start-pos", (value) => {
     range.attr("value", value);
     setProgress(value, ANIMATION_SPEED);
-    changeBackground(range.attr("max") - range.attr("value"), range.attr("max"));
+    // changeBackground(range.attr("max") - range.attr("value"), range.attr("max"));
+    changeBackground(range.attr("max"), range.attr("max"));
   });
   socket.on("set-arrows-enabled", (enabled) => {
     up.attr("disabled", !enabled);
@@ -98,7 +111,8 @@ $(document).ready(function (e) {
     range.attr("disabled", !enabled);
   });
   socket.on("set-reset-enabled", (enabled) => {
-    reset.attr("disabled", !enabled);
+    resetUp.attr("disabled", !enabled);
+    resetDown.attr("disabled", !enabled);
   });
   socket.on("blinds-position", (data) => {
     // console.log(position);
