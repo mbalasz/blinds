@@ -34,11 +34,13 @@ class Blinds {
   }
 
   async moveUp(steps, speed = DEFAULT_SPEED) {
-    await this.move(steps, UP, speed);
+    const finalPos = Math.max(this.currentBlindsPosition - steps, 0);
+    await this.move(this.currentBlindsPosition - finalPos, UP, speed);
   }
 
   async moveDown(steps, speed = DEFAULT_SPEED) {
-    await this.move(steps, DOWN, speed);
+    const finalPos = Math.min(this.currentBlindsPosition + steps, this.maxSteps);
+    await this.move(finalPos - this.currentBlindsPosition, DOWN, speed);
   }
 
   async move(steps, dir, speed) {
@@ -53,6 +55,7 @@ class Blinds {
       if (!counter) {
         return;
       }
+	    // console.log(counter);
       let newBlindsPosition =
       // Moving blinds down increases the motor counter, thus blind's position.
         lastBlindsPosition + (dir == DOWN ? counter : -counter);
@@ -60,7 +63,7 @@ class Blinds {
         newBlindsPosition < 0 ||
         newBlindsPosition > this.maxSteps
       ) {
-        this.stopBlinds();
+        //this.stopBlinds();
       } else {
         this.setBlindsPosition(newBlindsPosition);
       }

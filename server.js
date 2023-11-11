@@ -11,8 +11,8 @@ const port = 3000;
 const blindsPositionFilePath = "blinds.txt";
 const blindsScheduleFilePath = "blinds_schedule.txt";
 
-const MOVE_UP_STEPS = 50;
-const MOVE_DOWN_STEPS = 50;
+const MOVE_UP_STEPS = 300;
+const MOVE_DOWN_STEPS = 300;
 const MAX_STEPS = 16500;
 
 const motor = new Motor(/* enablePin= */ 21, /*dirPin= */ 23, /* stepPin= */ 24, 'motor.py');
@@ -20,6 +20,7 @@ const initialBlindsPosition = readBlindsPositionSync() || 0;
 const blinds = new Blinds(motor, initialBlindsPosition, MAX_STEPS);
 const blindsScheduler = new BlindsScheduler(blinds);
 const storedBlindsSchedule = readBlindsScheduleSync();
+console.log(storedBlindsSchedule);
 blindsScheduler.scheduleBlindsOpen(
   storedBlindsSchedule['open'].hour, storedBlindsSchedule['open'].minute);
 blindsScheduler.scheduleBlindsClose(
