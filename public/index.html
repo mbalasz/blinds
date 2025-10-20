@@ -53,6 +53,52 @@
           </button>
         </div>
 
+        <!-- Schedule Section -->
+        <div class="schedule-section">
+          <button class="schedule-toggle" id="schedule-toggle" type="button" aria-expanded="false">
+            <span class="schedule-toggle-text">Schedule</span>
+            <span class="schedule-toggle-icon">▼</span>
+          </button>
+
+          <div class="schedule-panel" id="schedule-panel">
+            <div class="schedule-content">
+              <div class="schedule-row">
+                <label class="schedule-label" for="schedule-open">
+                  <span class="schedule-label-icon">☀️</span>
+                  Open at
+                </label>
+                <input
+                  type="time"
+                  id="schedule-open"
+                  class="schedule-time-input"
+                  value="07:30"
+                />
+              </div>
+
+              <div class="schedule-row">
+                <label class="schedule-label" for="schedule-close">
+                  <span class="schedule-label-icon">🌙</span>
+                  Close at
+                </label>
+                <input
+                  type="time"
+                  id="schedule-close"
+                  class="schedule-time-input"
+                  value="18:40"
+                />
+              </div>
+
+              <div class="schedule-actions">
+                <button class="btn btn-primary" id="schedule-save" type="button">
+                  Save Schedule
+                </button>
+              </div>
+
+              <div class="schedule-status" id="schedule-status"></div>
+            </div>
+          </div>
+        </div>
+
         <!-- Reset Controls -->
         <div class="reset-controls">
           <button class="btn btn-reset" id="reset-up" type="button">

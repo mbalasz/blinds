@@ -32,10 +32,17 @@ function init() {
     stop: document.getElementById('stop'),
     resetUp: document.getElementById('reset-up'),
     resetDown: document.getElementById('reset-down'),
+    scheduleToggle: document.getElementById('schedule-toggle'),
+    schedulePanel: document.getElementById('schedule-panel'),
+    scheduleOpen: document.getElementById('schedule-open'),
+    scheduleClose: document.getElementById('schedule-close'),
+    scheduleSave: document.getElementById('schedule-save'),
+    scheduleStatus: document.getElementById('schedule-status'),
   };
 
   // Set up event listeners
   setupEventListeners();
+  setupScheduleListeners();
 
   // Set up socket listeners
   setupSocketListeners();
@@ -44,6 +51,9 @@ function init() {
   setButtonEnabled(elements.up, false);
   setButtonEnabled(elements.down, false);
   setButtonEnabled(elements.stop, false);
+
+  // Request current schedule from server
+  socket.emit('get-schedule');
 }
 
 /**
@@ -103,6 +113,46 @@ function setupEventListeners() {
 }
 
 /**
+ * Set up schedule event listeners
+ */
+function setupScheduleListeners() {
+  // Toggle schedule panel
+  elements.scheduleToggle.addEventListener('click', () => {
+    const isExpanded = elements.scheduleToggle.getAttribute('aria-expanded') === 'true';
+    elements.scheduleToggle.setAttribute('aria-expanded', !isExpanded);
+    elements.schedulePanel.classList.toggle('open');
+  });
+
+  // Save schedule
+  elements.scheduleSave.addEventListener('click', () => {
+    const openTime = elements.scheduleOpen.value;
+    const closeTime = elements.scheduleClose.value;
+
+    if (!openTime || !closeTime) {
+      showScheduleStatus('Please set both open and close times', 'error');
+      return;
+    }
+
+    const [openHour, openMinute] = openTime.split(':').map(Number);
+    const [closeHour, closeMinute] = closeTime.split(':').map(Number);
+
+    // Validate times
+    if (isNaN(openHour) || isNaN(openMinute) || isNaN(closeHour) || isNaN(closeMinute)) {
+      showScheduleStatus('Invalid time format', 'error');
+      return;
+    }
+
+    // Send to server
+    socket.emit('update-schedule', {
+      open: { hour: openHour, minute: openMinute },
+      close: { hour: closeHour, minute: closeMinute }
+    });
+
+    showScheduleStatus('Saving...', 'success');
+  });
+}
+
+/**
  * Set up Socket.IO event listeners
  */
 function setupSocketListeners() {
@@ -146,6 +196,24 @@ function setupSocketListeners() {
     currentPosition = position;
     setProgress(position, data.animate ? ANIMATION_SPEED : 0);
     updateProgressLabel(position);
+  });
+
+  // Schedule events
+  socket.on('schedule-data', (schedule) => {
+    if (schedule && schedule.open && schedule.close) {
+      const openTime = `${String(schedule.open.hour).padStart(2, '0')}:${String(schedule.open.minute).padStart(2, '0')}`;
+      const closeTime = `${String(schedule.close.hour).padStart(2, '0')}:${String(schedule.close.minute).padStart(2, '0')}`;
+      elements.scheduleOpen.value = openTime;
+      elements.scheduleClose.value = closeTime;
+    }
+  });
+
+  socket.on('schedule-updated', (data) => {
+    if (data.success) {
+      showScheduleStatus('Schedule saved successfully!', 'success');
+    } else {
+      showScheduleStatus(data.message || 'Failed to save schedule', 'error');
+    }
   });
 }
 
@@ -225,6 +293,21 @@ function setTargetPosition(percentage) {
 function hideTargetIndicator() {
   targetPosition = null;
   elements.progressTarget.classList.remove('visible');
+}
+
+/**
+ * Show schedule status message
+ * @param {string} message - Status message to display
+ * @param {string} type - Status type: 'success' or 'error'
+ */
+function showScheduleStatus(message, type) {
+  elements.scheduleStatus.textContent = message;
+  elements.scheduleStatus.className = `schedule-status visible ${type}`;
+
+  // Auto-hide after 3 seconds
+  setTimeout(() => {
+    elements.scheduleStatus.classList.remove('visible');
+  }, 3000);
 }
 
 /**

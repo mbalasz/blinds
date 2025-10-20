@@ -105,6 +105,51 @@ io.on("connection", (socket) => {
     blinds.moveDownToEnd();
   });
 
+  // Schedule management
+  socket.on("get-schedule", () => {
+    socket.emit("schedule-data", storedBlindsSchedule);
+  });
+
+  socket.on("update-schedule", (newSchedule) => {
+    try {
+      // Validate schedule data
+      if (!newSchedule || !newSchedule.open || !newSchedule.close) {
+        socket.emit("schedule-updated", { success: false, message: "Invalid schedule data" });
+        return;
+      }
+
+      const { open, close } = newSchedule;
+
+      // Validate times
+      if (
+        isNaN(open.hour) || isNaN(open.minute) ||
+        isNaN(close.hour) || isNaN(close.minute) ||
+        open.hour < 0 || open.hour > 23 ||
+        open.minute < 0 || open.minute > 59 ||
+        close.hour < 0 || close.hour > 23 ||
+        close.minute < 0 || close.minute > 59
+      ) {
+        socket.emit("schedule-updated", { success: false, message: "Invalid time values" });
+        return;
+      }
+
+      // Update scheduler
+      blindsScheduler.updateSchedule(open.hour, open.minute, close.hour, close.minute);
+
+      // Save to file
+      storeBlindsScheduleSync(newSchedule);
+
+      // Update storedBlindsSchedule variable
+      storedBlindsSchedule.open = open;
+      storedBlindsSchedule.close = close;
+
+      socket.emit("schedule-updated", { success: true });
+    } catch (error) {
+      console.error("Error updating schedule:", error);
+      socket.emit("schedule-updated", { success: false, message: "Server error" });
+    }
+  });
+
   console.log("[Socket] Client connected");
 
   const setArrowsEnabled = (blindsInMotion) =>
@@ -192,6 +237,19 @@ function readBlindsScheduleSync() {
   } catch (err) {
     console.log("Couldn't read the blinds schedule", err);
     return null;
+  }
+}
+
+function storeBlindsScheduleSync(schedule) {
+  try {
+    const openTime = `${String(schedule.open.hour).padStart(2, '0')}:${String(schedule.open.minute).padStart(2, '0')}`;
+    const closeTime = `${String(schedule.close.hour).padStart(2, '0')}:${String(schedule.close.minute).padStart(2, '0')}`;
+    const content = `open ${openTime}\nclose ${closeTime}\n`;
+    fs.writeFileSync(blindsScheduleFilePath, content);
+    console.log(`[Storage] Schedule saved - Open: ${openTime}, Close: ${closeTime}`);
+  } catch (err) {
+    console.error('[Storage] Failed to save schedule:', err);
+    throw err;
   }
 }
 
