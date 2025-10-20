@@ -1,121 +1,168 @@
-const bgBrightColor = {
-  r: 199,
-  g: 109,
-  b: 0,
-};
-const bgDarkColor = {
-  r: 0,
-  g: 0,
-  b: 0,
-};
-const bgSteps = 100;
+// Initialize Socket.IO connection
+const socket = io();
 
-function generateGradient(startColor, endColor, steps) {
-  rStep = (endColor.r - startColor.r) / steps;
-  gStep = (endColor.g - startColor.g) / steps;
-  bStep = (endColor.b - startColor.b) / steps;
+// DOM elements (loaded after DOM is ready)
+let elements = {};
 
-  let gradient = [];
-  for (i = 0; i <= steps; i++) {
-    gradient.push({
-      r: startColor.r + i * rStep,
-      g: startColor.g + i * gStep,
-      b: startColor.b + i * bStep,
+// Animation configuration
+const ANIMATION_SPEED = 300;
+
+/**
+ * Initialize the application
+ */
+function init() {
+  // Get all DOM elements
+  elements = {
+    progressBar: document.getElementById('progress-bar'),
+    progressLabel: document.getElementById('progress-label'),
+    progressContainer: document.querySelector('.progress-container'),
+    up: document.getElementById('up'),
+    upEnd: document.getElementById('up-end'),
+    down: document.getElementById('down'),
+    downEnd: document.getElementById('down-end'),
+    stop: document.getElementById('stop'),
+    resetUp: document.getElementById('reset-up'),
+    resetDown: document.getElementById('reset-down'),
+  };
+
+  // Set up event listeners
+  setupEventListeners();
+
+  // Set up socket listeners
+  setupSocketListeners();
+
+  // Initial state
+  setButtonEnabled(elements.up, false);
+  setButtonEnabled(elements.down, false);
+  setButtonEnabled(elements.stop, false);
+}
+
+/**
+ * Set up DOM event listeners
+ */
+function setupEventListeners() {
+  // Button click events
+  elements.upEnd.addEventListener('click', () => socket.emit('move-up-end'));
+  elements.up.addEventListener('click', () => socket.emit('move-up'));
+  elements.down.addEventListener('click', () => socket.emit('move-down'));
+  elements.downEnd.addEventListener('click', () => socket.emit('move-down-end'));
+  elements.stop.addEventListener('click', () => socket.emit('stop-blinds'));
+  elements.resetUp.addEventListener('click', () => socket.emit('reset-up'));
+  elements.resetDown.addEventListener('click', () => socket.emit('reset-down'));
+
+  // Add haptic feedback on button press (if supported)
+  const buttons = [
+    elements.up, elements.upEnd, elements.down,
+    elements.downEnd, elements.stop, elements.resetUp, elements.resetDown
+  ];
+
+  buttons.forEach(button => {
+    button.addEventListener('touchstart', () => {
+      // Trigger haptic feedback if available
+      if (navigator.vibrate) {
+        navigator.vibrate(10);
+      }
     });
-  }
-  return gradient;
+  });
 }
 
-let bgGradient = generateGradient(bgDarkColor, bgBrightColor, bgSteps);
+/**
+ * Set up Socket.IO event listeners
+ */
+function setupSocketListeners() {
+  socket.on('start-pos', (value) => {
+    const position = Math.round(value);
+    setProgress(position, ANIMATION_SPEED);
+    updateProgressLabel(position);
+  });
 
-function changeBackground(sliderValue, sliderMax) {
-  let idx = Math.floor((sliderValue / sliderMax) * bgSteps);
-  let bgColor = bgGradient[idx];
-  document.body.style.backgroundColor =
-    "rgb(" + [bgColor.r, bgColor.g, bgColor.b].join(",") + ")";
+  socket.on('set-arrows-enabled', (enabled) => {
+    setButtonEnabled(elements.up, enabled);
+    setButtonEnabled(elements.upEnd, enabled);
+    setButtonEnabled(elements.down, enabled);
+    setButtonEnabled(elements.downEnd, enabled);
+  });
+
+  socket.on('set-stop-enabled', (enabled) => {
+    setButtonEnabled(elements.stop, enabled);
+  });
+
+  socket.on('set-slider-enabled', (enabled) => {
+    // Slider removed - no-op
+  });
+
+  socket.on('set-reset-enabled', (enabled) => {
+    setButtonEnabled(elements.resetUp, enabled);
+    setButtonEnabled(elements.resetDown, enabled);
+  });
+
+  socket.on('blinds-position', (data) => {
+    const position = Math.round(data.blindsPosition);
+    setProgress(position, data.animate ? ANIMATION_SPEED : 0);
+    updateProgressLabel(position);
+  });
 }
 
-let socket = io();
+/**
+ * Set the progress bar height
+ * @param {number} percentage - Position percentage (0-100)
+ * @param {number} animationSpeed - Animation duration in ms
+ */
+function setProgress(percentage, animationSpeed) {
+  const targetHeight = 100 - percentage;
 
-$(document).ready(function (e) {
-  var range = $(".input-range"),
-    value = $(".range-value"),
-    currentProgress = $(".progress-bar"),
-    progressContainer = $(".progress-container"),
-    up = $("#up"),
-    upEnd = $("#up-end"),
-    down = $("#down"),
-    downEnd = $("#down-end"),
-    stop = $("#stop"),
-    resetUp = $("#reset-up");
-    resetDown = $("#reset-down");
-  const maxProgressValue = progressContainer.height();
-  const ANIMATION_SPEED = 300;
-
-  function setProgress(percentage, animationSpeed) {
-    currentProgress.animate(
-      {
-        height: (1 - (percentage / 100)) * maxProgressValue,
-      },
-      animationSpeed,
-      function () {}
-    );
+  if (animationSpeed > 0) {
+    // Animate the progress bar
+    elements.progressBar.style.transition = `height ${animationSpeed}ms ease-out`;
+    elements.progressBar.style.height = `${targetHeight}%`;
+  } else {
+    // Instant update
+    elements.progressBar.style.transition = 'none';
+    elements.progressBar.style.height = `${targetHeight}%`;
+    // Force reflow to ensure transition is removed
+    void elements.progressBar.offsetHeight;
+    elements.progressBar.style.transition = 'height 0.3s ease-out';
   }
+}
 
-  stop.click(() => {
-    socket.emit("stop-blinds");
-  });
-  up.click(() => {
-    socket.emit("move-up");
-  });
-  upEnd.click(() => {
-    socket.emit("move-up-end");
-  });
-  down.click(() => {
-    socket.emit("move-down");
-  });
-  downEnd.click(() => {
-    socket.emit("move-down-end");
-  });
-  resetUp.click(() => {
-    socket.emit("reset-up");
-  });
-  resetDown.click(() => {
-    socket.emit("reset-down");
-  });
+/**
+ * Update the progress label text
+ * @param {number} percentage - Position percentage (0-100)
+ */
+function updateProgressLabel(percentage) {
+  const rounded = Math.round(percentage);
+  elements.progressLabel.textContent = `${rounded}%`;
+}
 
-  range.on("input", function () {
-    // changeBackground(this.value, this.max);
-  });
-  range.on("mouseup touchend", function () {
-    socket.emit("slider-changed", this.value);
-  });
+/**
+ * Enable or disable a button
+ * @param {HTMLElement} button - Button element
+ * @param {boolean} enabled - Whether to enable the button
+ */
+function setButtonEnabled(button, enabled) {
+  if (button) {
+    button.disabled = !enabled;
+  }
+}
 
-  up.attr("disabled", true);
-  stop.attr("disabled", true);
-
-  socket.on("start-pos", (value) => {
-    range.attr("value", value);
-    setProgress(value, ANIMATION_SPEED);
-    // changeBackground(range.attr("max") - range.attr("value"), range.attr("max"));
-    changeBackground(range.attr("max"), range.attr("max"));
-  });
-  socket.on("set-arrows-enabled", (enabled) => {
-    up.attr("disabled", !enabled);
-    down.attr("disabled", !enabled);
-  });
-  socket.on("set-stop-enabled", (enabled) => {
-    stop.attr("disabled", !enabled);
-  });
-  socket.on("set-slider-enabled", (enabled) => {
-    range.attr("disabled", !enabled);
-  });
-  socket.on("set-reset-enabled", (enabled) => {
-    resetUp.attr("disabled", !enabled);
-    resetDown.attr("disabled", !enabled);
-  });
-  socket.on("blinds-position", (data) => {
-    // console.log(position);
-    setProgress(data.blindsPosition, data.animate ? ANIMATION_SPEED : 0);
-  });
+/**
+ * Handle connection status
+ */
+socket.on('connect', () => {
+  console.log('Connected to server');
 });
+
+socket.on('disconnect', () => {
+  console.log('Disconnected from server');
+});
+
+socket.on('connect_error', (error) => {
+  console.error('Connection error:', error);
+});
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}

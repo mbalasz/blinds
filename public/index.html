@@ -1,50 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>Blinds</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#fee6e3" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Blinds Control</title>
     <link rel="stylesheet" href="style.css" />
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="client.js"></script>
+    <script src="/socket.io/socket.io.js" defer></script>
+    <script src="client.js" defer></script>
   </head>
   <body>
-    <div class="range-slider center-screen">
-      <div class="wrapper">
-        <input
-          id="blinds-slider"
-          class="input-range one"
-          orient="vertical"
-          type="range"
-          step="1"
-          value="5"
-          min="0"
-          max="100"
-        />
-        <button class="button two-row-one large-font" id="up-end" role="button">
-          <b>&UpArrowBar;</b>
-        </button>
-        <button class="button two-row-two large-font" id="up" role="button">
-          <b>&#8593;</b>
-        </button>
-        <button class="button two-row-three large-font" id="stop" role="button">
-          <b>&#x274F;</b>
-        </button>
-        <button class="button two-row-four large-font" id="down" role="button">
-          <b>&#8595;</b>
-        </button>
-        <button class="button two-row-five large-font" id="down-end" role="button">
-          <b>&DownArrowBar;</b>
-        </button>
-        <div class="progress-container three">
-          <div class="progress-bar"></div>
+    <div class="app-container">
+      <header class="app-header">
+        <h1 class="app-title">Blinds Control</h1>
+      </header>
+
+      <main class="controls-container">
+        <!-- Progress Visualization -->
+        <div class="progress-section">
+          <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+            <div class="progress-label" id="progress-label">--</div>
+          </div>
         </div>
-        <button class="button four-row-one large-font" id="reset-up" role="button">
-          <b>Reset up</b>
-        </button>
-        <button class="button four-row-three large-font" id="reset-down" role="button">
-          <b>Reset down</b>
-        </button>
-      </div>
+
+        <!-- Main Controls -->
+        <div class="main-controls">
+          <button class="btn btn-primary btn-large" id="up-end" type="button" aria-label="Open blinds fully">
+            <span class="btn-icon">⇈</span>
+            <span class="btn-text">Fully Open</span>
+          </button>
+
+          <button class="btn btn-secondary" id="up" type="button" aria-label="Move blinds up">
+            <span class="btn-icon">↑</span>
+          </button>
+
+          <button class="btn btn-secondary" id="down" type="button" aria-label="Move blinds down">
+            <span class="btn-icon">↓</span>
+          </button>
+
+          <button class="btn btn-primary btn-large" id="down-end" type="button" aria-label="Close blinds fully">
+            <span class="btn-icon">⇊</span>
+            <span class="btn-text">Fully Close</span>
+          </button>
+
+          <button class="btn btn-stop" id="stop" type="button" aria-label="Stop blinds">
+            <span class="btn-icon">■</span>
+            <span class="btn-text">STOP</span>
+          </button>
+        </div>
+
+        <!-- Reset Controls -->
+        <div class="reset-controls">
+          <button class="btn btn-reset" id="reset-up" type="button">
+            Reset to Open
+          </button>
+          <button class="btn btn-reset" id="reset-down" type="button">
+            Reset to Close
+          </button>
+        </div>
+      </main>
     </div>
   </body>
 </html>
