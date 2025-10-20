@@ -108,8 +108,21 @@ body {
   background: white;
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--border-radius);
-  overflow: hidden;
+  overflow: visible;
   box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--color-accent);
+}
+
+.progress-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .progress-bar {
@@ -120,6 +133,26 @@ body {
   height: 0%;
   background: var(--color-progress);
   transition: height 0.3s ease-out;
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.progress-target {
+  position: absolute;
+  left: 1%;
+  width: 98%;
+  height: 8px;
+  background: var(--color-stop);
+  bottom: 0%;
+  opacity: 0;
+  transition: bottom 0.8s ease-in-out, opacity 0.3s ease-out;
+  z-index: 5;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.6);
+  border-radius: var(--border-radius);
+}
+
+.progress-target.visible {
+  opacity: 1;
 }
 
 .progress-label {

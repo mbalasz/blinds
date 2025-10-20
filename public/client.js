@@ -7,6 +7,14 @@ let elements = {};
 // Animation configuration
 const ANIMATION_SPEED = 300;
 
+// Position tracking
+let currentPosition = 0;
+let targetPosition = null;
+
+// Constants (must match server.js)
+const MOVE_STEPS = 300;
+const MAX_STEPS = 16500;
+
 /**
  * Initialize the application
  */
@@ -14,6 +22,7 @@ function init() {
   // Get all DOM elements
   elements = {
     progressBar: document.getElementById('progress-bar'),
+    progressTarget: document.getElementById('progress-target'),
     progressLabel: document.getElementById('progress-label'),
     progressContainer: document.querySelector('.progress-container'),
     up: document.getElementById('up'),
@@ -41,14 +50,41 @@ function init() {
  * Set up DOM event listeners
  */
 function setupEventListeners() {
-  // Button click events
-  elements.upEnd.addEventListener('click', () => socket.emit('move-up-end'));
-  elements.up.addEventListener('click', () => socket.emit('move-up'));
-  elements.down.addEventListener('click', () => socket.emit('move-down'));
-  elements.downEnd.addEventListener('click', () => socket.emit('move-down-end'));
-  elements.stop.addEventListener('click', () => socket.emit('stop-blinds'));
-  elements.resetUp.addEventListener('click', () => socket.emit('reset-up'));
-  elements.resetDown.addEventListener('click', () => socket.emit('reset-down'));
+  // Button click events with target position tracking
+  elements.upEnd.addEventListener('click', () => {
+    setTargetPosition(100);
+    socket.emit('move-up-end');
+  });
+
+  elements.up.addEventListener('click', () => {
+    const target = Math.min(currentPosition + (MOVE_STEPS / MAX_STEPS * 100), 100);
+    setTargetPosition(target);
+    socket.emit('move-up');
+  });
+
+  elements.down.addEventListener('click', () => {
+    const target = Math.max(currentPosition - (MOVE_STEPS / MAX_STEPS * 100), 0);
+    setTargetPosition(target);
+    socket.emit('move-down');
+  });
+
+  elements.downEnd.addEventListener('click', () => {
+    setTargetPosition(0);
+    socket.emit('move-down-end');
+  });
+
+  elements.stop.addEventListener('click', () => {
+    hideTargetIndicator();
+    socket.emit('stop-blinds');
+  });
+
+  elements.resetUp.addEventListener('click', () => {
+    socket.emit('reset-up');
+  });
+
+  elements.resetDown.addEventListener('click', () => {
+    socket.emit('reset-down');
+  });
 
   // Add haptic feedback on button press (if supported)
   const buttons = [
@@ -72,6 +108,7 @@ function setupEventListeners() {
 function setupSocketListeners() {
   socket.on('start-pos', (value) => {
     const position = Math.round(value);
+    currentPosition = position;
     setProgress(position, ANIMATION_SPEED);
     updateProgressLabel(position);
   });
@@ -81,6 +118,14 @@ function setupSocketListeners() {
     setButtonEnabled(elements.upEnd, enabled);
     setButtonEnabled(elements.down, enabled);
     setButtonEnabled(elements.downEnd, enabled);
+
+    // Hide target indicator when movement completes
+    if (enabled && targetPosition !== null) {
+      // Check if we've reached the target
+      if (Math.abs(currentPosition - targetPosition) < 1) {
+        hideTargetIndicator();
+      }
+    }
   });
 
   socket.on('set-stop-enabled', (enabled) => {
@@ -98,6 +143,7 @@ function setupSocketListeners() {
 
   socket.on('blinds-position', (data) => {
     const position = Math.round(data.blindsPosition);
+    currentPosition = position;
     setProgress(position, data.animate ? ANIMATION_SPEED : 0);
     updateProgressLabel(position);
   });
@@ -143,6 +189,42 @@ function setButtonEnabled(button, enabled) {
   if (button) {
     button.disabled = !enabled;
   }
+}
+
+/**
+ * Set and show the target position indicator
+ * @param {number} percentage - Target position percentage (0-100)
+ */
+function setTargetPosition(percentage) {
+  targetPosition = percentage;
+
+  // Calculate position with offset to align edges properly
+  // At 0%, bottom edge aligns with bottom
+  // At 100%, top edge aligns with top (need to offset by bar height)
+  const barHeightPx = 8;
+  const containerHeightPx = elements.progressContainer.offsetHeight;
+  const offsetPx = (percentage / 100) * barHeightPx;
+
+  // First, instantly move the bar to current position
+  elements.progressTarget.style.transition = 'none';
+  const currentOffsetPx = (currentPosition / 100) * barHeightPx;
+  elements.progressTarget.style.bottom = `calc(${currentPosition}% - ${currentOffsetPx}px)`;
+  elements.progressTarget.classList.add('visible');
+
+  // Force reflow
+  void elements.progressTarget.offsetHeight;
+
+  // Re-enable transition and animate to target
+  elements.progressTarget.style.transition = '';
+  elements.progressTarget.style.bottom = `calc(${percentage}% - ${offsetPx}px)`;
+}
+
+/**
+ * Hide the target position indicator
+ */
+function hideTargetIndicator() {
+  targetPosition = null;
+  elements.progressTarget.classList.remove('visible');
 }
 
 /**
