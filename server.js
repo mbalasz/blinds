@@ -4,7 +4,10 @@ const { Server } = require("socket.io");
 const fs = require("fs");
 const { Blinds } = require("./blinds");
 const BlindsScheduler = require('./blinds_scheduler')
-const Motor = require("./motor");
+
+// Conditionally load real or mock motor based on environment variable
+const useMockMotor = process.env.USE_MOCK_MOTOR === 'true';
+const Motor = useMockMotor ? require("./mock-motor") : require("./motor");
 
 const app = express();
 const port = 3000;
@@ -15,16 +18,37 @@ const MOVE_UP_STEPS = 300;
 const MOVE_DOWN_STEPS = 300;
 const MAX_STEPS = 16500;
 
+// Display server mode
+if (useMockMotor) {
+  console.log("=".repeat(60));
+  console.log("  BLINDS TEST SERVER - Using Mock Motor");
+  console.log("  No hardware required - safe for UI testing");
+  console.log("=".repeat(60));
+} else {
+  console.log("=".repeat(60));
+  console.log("  BLINDS PRODUCTION SERVER - Using Real Motor");
+  console.log("  Connected to GPIO hardware");
+  console.log("=".repeat(60));
+}
+
 const motor = new Motor(/* enablePin= */ 21, /*dirPin= */ 23, /* stepPin= */ 24, 'motor.py');
 const initialBlindsPosition = readBlindsPositionSync() || 0;
 const blinds = new Blinds(motor, initialBlindsPosition, MAX_STEPS);
+
+console.log(`Initial blinds position: ${initialBlindsPosition} steps (${((initialBlindsPosition / MAX_STEPS) * 100).toFixed(1)}%)`);
+
 const blindsScheduler = new BlindsScheduler(blinds);
 const storedBlindsSchedule = readBlindsScheduleSync();
-console.log(storedBlindsSchedule);
-blindsScheduler.scheduleBlindsOpen(
-  storedBlindsSchedule['open'].hour, storedBlindsSchedule['open'].minute);
-blindsScheduler.scheduleBlindsClose(
-  storedBlindsSchedule['close'].hour, storedBlindsSchedule['close'].minute);
+
+if (storedBlindsSchedule && storedBlindsSchedule['open'] && storedBlindsSchedule['close']) {
+  console.log("Blinds schedule:", storedBlindsSchedule);
+  blindsScheduler.scheduleBlindsOpen(
+    storedBlindsSchedule['open'].hour, storedBlindsSchedule['open'].minute);
+  blindsScheduler.scheduleBlindsClose(
+    storedBlindsSchedule['close'].hour, storedBlindsSchedule['close'].minute);
+} else {
+  console.log("No valid schedule file found - scheduling disabled");
+}
 
 const storeCurrentBlindsPositionOnMotionChange = (blindsInMotion) => {
   if (!blindsInMotion) {
@@ -43,7 +67,8 @@ app.get("/", (_, res) => {
 });
 
 const server = app.listen(port, () => {
-  console.log(`Blinds server listening at http://localhost:${port}`);
+  console.log(`\nServer running at http://localhost:${port}`);
+  console.log("Press Ctrl+C to stop\n");
 });
 
 const io = new Server(server);
@@ -80,7 +105,7 @@ io.on("connection", (socket) => {
     blinds.moveDownToEnd();
   });
 
-  console.log("Connected");
+  console.log("[Socket] Client connected");
 
   const setArrowsEnabled = (blindsInMotion) =>
     socket.emit("set-arrows-enabled", !blindsInMotion);
@@ -115,7 +140,7 @@ io.on("connection", (socket) => {
   blinds.registerBlindsResetObservers(resetObservers);
 
   socket.on("disconnect", () => {
-    console.log("Disconnecting...");
+    console.log("[Socket] Client disconnected");
     blinds.unregisterBlindsStatusObservers(statusObservers);
     blinds.unregisterBlindsPositionObservers(positionObservers);
     blinds.unregisterBlindsResetObservers(resetObservers);
@@ -125,7 +150,7 @@ io.on("connection", (socket) => {
 });
 
 function storeBlindsPositionSync(value) {
-  console.log("Storing blinds position: " + value);
+  console.log(`[Storage] Storing blinds position: ${value} steps`);
   fs.writeFileSync(blindsPositionFilePath, value.toString());
 }
 
@@ -133,7 +158,7 @@ function readBlindsPositionSync() {
   try {
     return parseInt(fs.readFileSync(blindsPositionFilePath, "utf8"));
   } catch (err) {
-    console.log("Couldn't read the blinds position from disk", err);
+    console.log("[Storage] Couldn't read the blinds position from disk (will start at 0)");
     return null;
   }
 }
@@ -171,7 +196,7 @@ function readBlindsScheduleSync() {
 }
 
 process.on("SIGINT", (_) => {
-  console.log(`curr ${initialBlindsPosition}`);
+  console.log("\n[Server] Shutting down...");
   if (blinds) {
     storeBlindsPositionSync(blinds.getBlindsPosition());
     blinds.cleanup();

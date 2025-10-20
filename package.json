@@ -4,6 +4,8 @@
     "description": "",
     "main": "server.js",
     "scripts": {
+        "start": "node server.js",
+        "test": "USE_MOCK_MOTOR=true node server.js",
         "sass:compile": "node-sass --include-path sass public/style.scss public/style.css"
     },
     "repository": {
