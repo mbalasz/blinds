@@ -38,6 +38,8 @@ function init() {
     scheduleClose: document.getElementById('schedule-close'),
     scheduleSave: document.getElementById('schedule-save'),
     scheduleStatus: document.getElementById('schedule-status'),
+    scheduleDisplayOpen: document.getElementById('schedule-display-open'),
+    scheduleDisplayClose: document.getElementById('schedule-display-close'),
   };
 
   // Set up event listeners
@@ -205,12 +207,17 @@ function setupSocketListeners() {
       const closeTime = `${String(schedule.close.hour).padStart(2, '0')}:${String(schedule.close.minute).padStart(2, '0')}`;
       elements.scheduleOpen.value = openTime;
       elements.scheduleClose.value = closeTime;
+      elements.scheduleDisplayOpen.textContent = openTime;
+      elements.scheduleDisplayClose.textContent = closeTime;
     }
   });
 
   socket.on('schedule-updated', (data) => {
     if (data.success) {
       showScheduleStatus('Schedule saved successfully!', 'success');
+      // Update the display with the newly saved values
+      elements.scheduleDisplayOpen.textContent = elements.scheduleOpen.value;
+      elements.scheduleDisplayClose.textContent = elements.scheduleClose.value;
     } else {
       showScheduleStatus(data.message || 'Failed to save schedule', 'error');
     }

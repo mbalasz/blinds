@@ -1,2 +1,2 @@
-open 13:15
-close 16:20
+open 16:00
+close 22:59

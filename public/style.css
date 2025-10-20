@@ -170,6 +170,35 @@ body {
 }
 
 /* ========================================
+   Schedule Display
+   ======================================== */
+
+.schedule-display {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-xl);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  font-size: 1.1rem;
+  color: var(--color-text-light);
+}
+
+.schedule-display-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.schedule-display-icon {
+  font-size: 1.3rem;
+}
+
+.schedule-display-time {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* ========================================
    Main Controls
    ======================================== */
 
