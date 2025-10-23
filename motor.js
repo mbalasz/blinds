@@ -1,4 +1,4 @@
-const spawn = require("child_process").spawn;
+const { spawn, execSync } = require("child_process");
 
 class Motor {
 
@@ -8,6 +8,26 @@ class Motor {
         this.stepPin = stepPin;
         this.motorPythonScriptPath = motorPythonScriptPath;
         this.motor_process = null;
+
+        // Configure TMC2209 driver for quiet, reliable operation
+        this._configureTMC2209();
+    }
+
+    _configureTMC2209() {
+        console.log("[Motor] Configuring TMC2209 stepper driver for quiet operation...");
+        try {
+            const output = execSync('python3 configure_tmc.py', {
+                encoding: 'utf8',
+                stdio: ['inherit', 'pipe', 'pipe']
+            });
+            console.log(output);
+            console.log("[Motor] TMC2209 configured successfully");
+        } catch (error) {
+            console.error("[Motor] WARNING: Failed to configure TMC2209:");
+            console.error(error.stderr || error.message);
+            console.error("[Motor] Continuing with default driver settings...");
+            console.error("[Motor] Motor will still work but may not be optimally configured for quiet operation");
+        }
     }
 
     move(steps, dir, speed_multiplier, dataCallback, exitCallback) {
