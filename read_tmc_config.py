@@ -13,7 +13,7 @@ Run manually with: python3 read_tmc_config.py
 
 import sys
 try:
-    from tmc_driver.tmc_2209 import *
+    from tmc.src.tmc_driver.tmc_2209 import *
 except ImportError:
     print("ERROR: tmc_driver library not installed.")
     print("Install with: cd tmc-driver && pip3 install .")
