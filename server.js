@@ -16,7 +16,7 @@ const blindsScheduleFilePath = "blinds_schedule.txt";
 
 const MOVE_UP_STEPS = 300;
 const MOVE_DOWN_STEPS = 300;
-const MAX_STEPS = 18000;
+const MAX_STEPS = 32000;
 
 // Display server mode
 if (useMockMotor) {

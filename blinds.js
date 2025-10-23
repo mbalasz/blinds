@@ -1,6 +1,6 @@
 const DOWN = "down";
 const UP = "up";
-const DEFAULT_SPEED = 5;
+const DEFAULT_SPEED = 3;
 
 /**
  * 0 represents the blinds at the very bottom (fully closed)
