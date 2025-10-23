@@ -64,21 +64,27 @@ def read_tmc2209_config():
         tmc.ihold_irun.read()
         irun = tmc.ihold_irun.irun
         ihold = tmc.ihold_irun.ihold
-        ihold_delay = tmc.ihold_irun.ihold_delay
+        ihold_delay = tmc.ihold_irun.iholddelay
 
-        # Calculate actual current (approximate)
+        print(f"  IRUN (run current scale):    {irun}/31 (raw register value)")
+        print(f"  IHOLD (hold current scale):   {ihold}/31 (raw register value)")
+        print(f"  IHOLDDELAY:                   {ihold_delay}")
+        print()
+
+        # Calculate actual current (using same formula as tmc_220x.py line 428)
         vsense = chopconf.vsense
         vfs = 0.180 if vsense else 0.325
         rsense = 0.11
 
+        print(f"  VSense setting:               {'HIGH (0.180V)' if vsense else 'LOW (0.325V)'}")
+        print(f"  RSense value:                 {rsense} Ohm")
+        print()
+
         run_current_ma = (irun + 1) / 32.0 * vfs / (rsense + 0.02) / 1.41421 * 1000
         hold_current_ma = (ihold + 1) / 32.0 * vfs / (rsense + 0.02) / 1.41421 * 1000
 
-        print(f"  IRUN (run current scale):    {irun}/31")
-        print(f"  IHOLD (hold current scale):   {ihold}/31")
-        print(f"  IHOLD_DELAY:                  {ihold_delay}")
-        print(f"  Estimated run current:        ~{int(run_current_ma)} mA")
-        print(f"  Estimated hold current:       ~{int(hold_current_ma)} mA")
+        print(f"  Calculated run current:       ~{int(run_current_ma)} mA")
+        print(f"  Calculated hold current:      ~{int(hold_current_ma)} mA")
         print()
 
         # Read driver status
@@ -97,7 +103,7 @@ def read_tmc2209_config():
         print("=" * 70)
         print()
 
-        mode = "StealthChop (QUIET)" if not gconf.spreadcycle else "SpreadCycle (POWERFUL)"
+        mode = "StealthChop (QUIET)" if not gconf.en_spreadcycle else "SpreadCycle (POWERFUL)"
         print(f"  Mode:                  {mode}")
         print(f"  Microstepping:         1/{chopconf.mres_ms}")
         print(f"  Interpolation:         {'ENABLED' if chopconf.intpol else 'DISABLED'}")
@@ -125,7 +131,7 @@ def read_tmc2209_config():
         print()
 
         recommendations = []
-        if gconf.spreadcycle:
+        if gconf.en_spreadcycle:
             recommendations.append("⚠ Consider switching to StealthChop for quieter operation")
         if chopconf.mres_ms < 16:
             recommendations.append("⚠ Consider increasing microstepping to 16 or 32 for smoother/quieter movement")
