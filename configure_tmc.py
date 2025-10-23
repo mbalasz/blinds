@@ -14,7 +14,7 @@ The settings persist in the TMC2209 registers until power cycle.
 
 import sys
 try:
-    from tmc_driver.tmc_2209 import *
+    from tmc.src.tmc_driver.tmc_2209 import *
 except ImportError:
     print("ERROR: tmc_driver library not installed.")
     print("Install with: cd tmc-driver && pip3 install .")
